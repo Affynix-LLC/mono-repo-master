@@ -1,0 +1,44 @@
+name: affynix-ai-stack
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: affynix-backend
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3001}
+    ports:
+      - "${PORT:-3001}:3001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3001/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: affynix-frontend
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+      FRONTEND_PORT: ${FRONTEND_PORT:-4173}
+    ports:
+      - "${FRONTEND_PORT:-4173}:4173"
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4173 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5

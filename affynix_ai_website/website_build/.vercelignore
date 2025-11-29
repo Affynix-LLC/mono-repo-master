@@ -1,0 +1,10 @@
+backend/
+affynix_final_vercel/
+*.zip
+docker-compose.yml
+Dockerfile.*
+deploy.sh
+DEPLOYMENT.md
+node_modules/
+dist/
+

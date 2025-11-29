@@ -1,0 +1,97 @@
+
+
+/**
+ * subdomainRouter.ts
+ *
+ * Affynix Category → Subdomain Taxonomy Engine
+ *
+ * This module receives a normalized category string such as:
+ *   "Digital Marketing"
+ *   "Health & Fitness"
+ *   "Crypto / Trading"
+ *   "AI Tools"
+ *
+ * And deterministically maps them to subdomains such as:
+ *   marketing.affynix.com
+ *   health.affynix.com
+ *   crypto.affynix.com
+ *   ai.affynix.com
+ *
+ * Any category not recognized is routed to a fallback:
+ *   general.affynix.com
+ *
+ * This ensures:
+ *  - No duplicated categories
+ *  - No fragmented subdomain naming
+ *  - Automatic routing for new affiliate networks
+ *
+ * The actual DNS creation & Vercel binding is handled by:
+ *  - cloudflare.ts
+ *  - vercel.ts
+ */
+
+const CATEGORY_MAP: Record<string, string> = {
+  // Core verticals
+  'digital marketing': 'marketing',
+  'marketing': 'marketing',
+  'business': 'business',
+  'business development': 'business',
+  'ecommerce': 'ecommerce',
+  'e-commerce': 'ecommerce',
+
+  // AI & Tech
+  'ai': 'ai',
+  'ai tools': 'ai',
+  'software': 'software',
+  'technology': 'tech',
+  'tech': 'tech',
+
+  // Finance
+  'crypto': 'crypto',
+  'trading': 'crypto',
+  'investing': 'finance',
+  'finance': 'finance',
+
+  // Health
+  'health': 'health',
+  'fitness': 'health',
+  'health & fitness': 'health',
+  'supplements': 'health',
+
+  // Education
+  'courses': 'education',
+  'training': 'education',
+
+  // Default general fallback
+  'default': 'general'
+};
+
+/**
+ * Normalize a category string to lowercase and strip symbols.
+ */
+function normalizeCategory(input: string): string {
+  if (!input) return 'default';
+
+  return input
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Convert a category into a canonical Affynix subdomain slug.
+ *
+ * If category is unknown, send to the general fallback.
+ */
+export function classifyCategoryToSubdomain(category: string): string {
+  const normalized = normalizeCategory(category);
+
+  if (CATEGORY_MAP[normalized]) {
+    return CATEGORY_MAP[normalized];
+  }
+
+  // Fallback to general
+  return CATEGORY_MAP['default'];
+}
