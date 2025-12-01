@@ -1,16 +1,16 @@
-# Frontend build
+# Admin build
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files
-COPY frontend/package.json ./
+COPY package.json ./
 
 # Install dependencies
 RUN npm install
 
 # Copy source code
-COPY frontend/ .
+COPY . .
 
 # Set build-time environment variables (Vite needs these at build time)
 ARG VITE_API_URL=http://localhost:3001
@@ -27,9 +27,9 @@ WORKDIR /app
 RUN apk add --no-cache curl
 
 # Copy package files
-COPY frontend/package.json ./
+COPY package.json ./
 
-# Install all dependencies (including dev dependencies for vite preview)
+# Install production dependencies
 RUN npm install
 
 # Copy built files from builder
@@ -37,8 +37,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/index.html ./
 
 # Expose port
-EXPOSE 4173
+EXPOSE 3002
 
 # Run preview server
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "4173"]
-
+CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "3002"]

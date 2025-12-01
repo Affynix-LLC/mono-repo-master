@@ -30,12 +30,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
     container_name: affynix-frontend
     env_file:
       - .env
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
       FRONTEND_PORT: ${FRONTEND_PORT:-4173}
     ports:
       - "${FRONTEND_PORT:-4173}:4173"
@@ -53,10 +54,11 @@ services:
     build:
       context: ../admin
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
     container_name: affynix-admin
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
     ports:
       - "3002:3002"
     restart: unless-stopped
