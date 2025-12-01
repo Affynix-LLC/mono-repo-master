@@ -9,7 +9,7 @@ Since you've already connected the GitHub repository, follow these steps:
 In your Vercel project dashboard:
 
 1. Go to **Settings** → **General**
-2. Set **Root Directory**: `Website/website_build/frontend`
+2. Set **Root Directory**: `affynix_ai_website/website_build/frontend`
 3. **Framework Preset**: Vite (or Auto-detect)
 
 ### 2. Build Settings
