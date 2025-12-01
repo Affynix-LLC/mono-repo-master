@@ -58,26 +58,57 @@ export default function Index() {
         }
     };
 
-    // Subscribe to conversation updates
+    // Subscribe to conversation updates with WebSocket streaming
     useEffect(() => {
         if (!conversation || !conversation.id) return;
+
+        let streamingMessageId = null;
+        let streamingText = '';
 
         try {
             const unsubscribe = api.agents.subscribeToConversation(conversation.id, (data) => {
                 try {
-                    if (!data || !data.messages || !Array.isArray(data.messages)) {
-                        return;
+                    // Handle streaming chunks
+                    if (data.type === 'message_start') {
+                        streamingMessageId = data.messageId;
+                        streamingText = '';
+                        setIsLoading(true);
+                    } else if (data.type === 'message_chunk') {
+                        if (data.messageId === streamingMessageId) {
+                            streamingText += data.chunk;
+                            // Update messages with streaming text
+                            setMessages(prev => {
+                                const filtered = prev.filter(m => m.id !== streamingMessageId);
+                                return [...filtered, {
+                                    id: streamingMessageId,
+                                    sender: 'ai',
+                                    text: streamingText,
+                                    streaming: true
+                                }];
+                            });
+                        }
+                    } else if (data.type === 'message_complete') {
+                        streamingMessageId = null;
+                        streamingText = '';
+                        setIsLoading(false);
+                    } else if (data.type === 'error') {
+                        console.error('Chat error:', data.error);
+                        setIsLoading(false);
+                    } else if (data.messages && Array.isArray(data.messages)) {
+                        // Full conversation update
+                        const formattedMessages = data.messages
+                            .filter(msg => msg && msg.role)
+                            .map(msg => ({
+                                id: msg.id || `msg_${Date.now()}`,
+                                sender: msg.role === 'user' ? 'user' : 'ai',
+                                text: msg.content || ''
+                            }));
+                        setMessages(formattedMessages);
+                        setIsLoading(false);
                     }
-                    
-                    const formattedMessages = data.messages
-                        .filter(msg => msg && msg.role)
-                        .map(msg => ({
-                            sender: msg.role === 'user' ? 'user' : 'ai',
-                            text: msg.content || ''
-                        }));
-                    setMessages(formattedMessages);
                 } catch (error) {
                     console.error("Error in subscription callback:", error);
+                    setIsLoading(false);
                 }
             });
 
@@ -185,9 +216,9 @@ export default function Index() {
 
                             <div className="flex-1 overflow-y-auto p-6 space-y-4">
                                 <AnimatePresence>
-                                    {messages && messages.map((msg, index) => (
+                                    {messages && messages.map((msg) => (
                                         <motion.div
-                                            key={`msg-${index}`}
+                                            key={msg.id || `msg-${msg.sender}-${msg.text?.substring(0, 10)}`}
                                             initial={{ opacity: 0, y: 20 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0, y: -20 }}
@@ -205,7 +236,10 @@ export default function Index() {
                                                             : '0 8px 30px rgba(59, 130, 246, 0.15)'
                                                     }}
                                                 >
-                                                    <p className="whitespace-pre-wrap text-gray-100">{msg.text}</p>
+                                                    <p className="whitespace-pre-wrap text-gray-100">
+                                                        {msg.text}
+                                                        {msg.streaming && <span className="inline-block w-2 h-4 ml-1 bg-cyan-400 animate-pulse" />}
+                                                    </p>
                                                 </div>
                                                 {msg.sender === 'user' && <User className="w-8 h-8 text-blue-400 flex-shrink-0 mt-1" />}
                                             </div>

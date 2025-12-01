@@ -1,7 +1,13 @@
 import express from 'express';
 import cors from 'cors';
+import { createServer } from 'http';
+import { dbHelpers } from './db.js';
+import { login, register, authMiddleware, optionalAuth } from './auth.js';
+import { invokeLLM, simpleLLMCall } from './llm.js';
+import { setupWebSocket } from './websocket.js';
 
 const app = express();
+const server = createServer(app);
 const PORT = process.env.PORT || 3001;
 
 // CORS configuration
@@ -43,34 +49,61 @@ app.use((req, res, next) => {
   next();
 });
 
-// In-memory data stores (replace with database in production)
-const dataStores = {
-  Client: [],
-  IntakeSubmission: [],
-  AppConfiguration: [],
-  Payment: [],
-  Agent: [],
-  CommandLog: [],
-  ZeroXControl: [],
-  AICalculatorInputs: [],
-  ClientIntegrationDetails: [],
-  CallLog: [],
-  Testimonial: [],
-  ChatSession: [],
-  Learning: [],
-  Product: []
-};
-
-// Helper function to get entity store
-const getStore = (entityName) => {
-  if (!dataStores[entityName]) {
-    dataStores[entityName] = [];
-  }
-  return dataStores[entityName];
+// Map entity names to database table names
+const entityTableMap = {
+  'Client': 'clients',
+  'IntakeSubmission': 'intake_submissions',
+  'AppConfiguration': 'app_configurations',
+  'Payment': 'payments',
+  'Agent': 'agents',
+  'ChatSession': 'chat_sessions',
+  'Product': 'products',
+  // Legacy entities (keep for compatibility, store in JSON or separate tables)
+  'CommandLog': 'clients', // Store as JSON in notes or create separate table
+  'ZeroXControl': 'app_configurations',
+  'AICalculatorInputs': 'app_configurations',
+  'ClientIntegrationDetails': 'clients',
+  'CallLog': 'clients',
+  'Testimonial': 'clients',
+  'Learning': 'clients'
 };
 
 // Auth endpoints
-app.get('/api/auth/me', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, full_name, role } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+    const result = await register(email, password, full_name, role || 'user');
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+    const result = await login(email, password);
+    res.json(result);
+  } catch (error) {
+    res.status(401).json({ error: error.message });
+  }
+});
+
+app.get('/api/auth/me', optionalAuth, (req, res) => {
+  if (req.user) {
+    const user = dbHelpers.getUserById(req.user.id);
+    if (user) {
+      const { password_hash, ...userWithoutPassword } = user;
+      return res.json(userWithoutPassword);
+    }
+  }
+  // Fallback for development (no auth required)
   res.json({
     id: 'local-user-1',
     email: 'local@affynix.com',
@@ -83,76 +116,166 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ success: true });
 });
 
-// Entity endpoints
-const createEntityRoutes = (entityName) => {
-  // List entities
-  app.get(`/api/entities/${entityName}`, (req, res) => {
-    const store = getStore(entityName);
-    const sort = req.query.sort || '';
-    let results = [...store];
-    
-    // Simple sort implementation
-    if (sort.startsWith('-')) {
-      const field = sort.substring(1);
-      results.sort((a, b) => {
-        const aVal = a[field] || '';
-        const bVal = b[field] || '';
-        return bVal.localeCompare(aVal);
-      });
-    } else if (sort) {
-      results.sort((a, b) => {
-        const aVal = a[sort] || '';
-        const bVal = b[sort] || '';
-        return aVal.localeCompare(bVal);
-      });
+// Conversation endpoints
+app.post('/api/conversations', optionalAuth, (req, res) => {
+  try {
+    const { agent_name, metadata } = req.body;
+    if (!agent_name) {
+      return res.status(400).json({ error: 'agent_name required' });
     }
-    
-    res.json(results);
+
+    const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const userId = req.user?.id || null;
+
+    dbHelpers.createConversation({
+      id: conversationId,
+      user_id: userId,
+      agent_name,
+      metadata: metadata || {}
+    });
+
+    const conversation = dbHelpers.getConversation(conversationId);
+    res.json({
+      ...conversation,
+      messages: []
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/conversations/:id', optionalAuth, (req, res) => {
+  try {
+    const conversation = dbHelpers.getConversation(req.params.id);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    const messages = dbHelpers.getMessagesByConversation(req.params.id);
+    res.json({
+      ...conversation,
+      messages: messages.map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.created_at
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/conversations/:id/messages', optionalAuth, async (req, res) => {
+  try {
+    const { role = 'user', content } = req.body;
+    if (!content) {
+      return res.status(400).json({ error: 'content required' });
+    }
+
+    const conversationId = req.params.id;
+    const conversation = dbHelpers.getConversation(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    // Save user message
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    dbHelpers.createMessage({
+      id: messageId,
+      conversation_id: conversationId,
+      role,
+      content
+    });
+
+    // Trigger LLM response (non-blocking, will be handled via WebSocket)
+    res.json({
+      id: messageId,
+      role,
+      content,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Entity endpoints (using database)
+const createEntityRoutes = (entityName) => {
+  const tableName = entityTableMap[entityName] || entityName.toLowerCase();
+  
+  // List entities
+  app.get(`/api/entities/${entityName}`, optionalAuth, (req, res) => {
+    try {
+      let results = dbHelpers.getAll(tableName);
+      
+      // Sort implementation
+      const sort = req.query.sort || '';
+      if (sort.startsWith('-')) {
+        const field = sort.substring(1);
+        results.sort((a, b) => {
+          const aVal = a[field] || '';
+          const bVal = b[field] || '';
+          return bVal.localeCompare(aVal);
+        });
+      } else if (sort) {
+        results.sort((a, b) => {
+          const aVal = a[sort] || '';
+          const bVal = b[sort] || '';
+          return aVal.localeCompare(bVal);
+        });
+      }
+      
+      res.json(results);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // Filter entities
-  app.post(`/api/entities/${entityName}/filter`, (req, res) => {
-    const store = getStore(entityName);
-    const filters = req.body || {};
-    const results = store.filter(item => {
-      return Object.keys(filters).every(key => item[key] === filters[key]);
-    });
-    res.json(results);
+  app.post(`/api/entities/${entityName}/filter`, optionalAuth, (req, res) => {
+    try {
+      const filters = req.body || {};
+      const results = dbHelpers.filter(tableName, filters);
+      res.json(results);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // Create entity
-  app.post(`/api/entities/${entityName}`, (req, res) => {
-    const store = getStore(entityName);
-    const newItem = {
-      id: Date.now().toString(),
-      ...req.body,
-      created_date: new Date().toISOString()
-    };
-    store.push(newItem);
-    res.json(newItem);
+  app.post(`/api/entities/${entityName}`, optionalAuth, (req, res) => {
+    try {
+      const newItem = dbHelpers.create(tableName, req.body);
+      res.json(newItem);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // Update entity
-  app.put(`/api/entities/${entityName}/:id`, (req, res) => {
-    const store = getStore(entityName);
-    const index = store.findIndex(item => item.id === req.params.id);
-    if (index !== -1) {
-      store[index] = { ...store[index], ...req.body };
-      res.json(store[index]);
-    } else {
-      res.status(404).json({ error: 'Not found' });
+  app.put(`/api/entities/${entityName}/:id`, optionalAuth, (req, res) => {
+    try {
+      const updated = dbHelpers.update(tableName, req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
   });
 
   // Delete entity
-  app.delete(`/api/entities/${entityName}/:id`, (req, res) => {
-    const store = getStore(entityName);
-    const index = store.findIndex(item => item.id === req.params.id);
-    if (index !== -1) {
-      store.splice(index, 1);
+  app.delete(`/api/entities/${entityName}/:id`, optionalAuth, (req, res) => {
+    try {
+      const result = dbHelpers.delete(tableName, req.params.id);
+      if (result.changes === 0) {
+        return res.status(404).json({ error: 'Not found' });
+      }
       res.json({ success: true });
-    } else {
-      res.status(404).json({ error: 'Not found' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
   });
 };
@@ -178,7 +301,7 @@ const entities = [
 entities.forEach(createEntityRoutes);
 
 // Function invoke endpoint
-app.post('/api/functions/:functionName', (req, res) => {
+app.post('/api/functions/:functionName', optionalAuth, (req, res) => {
   const { functionName } = req.params;
   console.log(`[API] Function invoked: ${functionName}`, req.body);
   res.json({
@@ -188,27 +311,67 @@ app.post('/api/functions/:functionName', (req, res) => {
 });
 
 // Integrations endpoints
-app.post('/api/integrations/core/invoke-llm', (req, res) => {
-  console.log('[API] InvokeLLM', req.body);
-  res.json({
-    success: true,
-    response: 'This is a mock LLM response. Replace with your local LLM implementation.'
-  });
+app.post('/api/integrations/core/invoke-llm', optionalAuth, async (req, res) => {
+  try {
+    const { prompt, conversationId, systemPrompt } = req.body;
+    if (!prompt) {
+      return res.status(400).json({ error: 'prompt required' });
+    }
+
+    const response = await simpleLLMCall(prompt, systemPrompt);
+    res.json({
+      success: true,
+      response
+    });
+  } catch (error) {
+    console.error('[API] LLM error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
 });
 
-app.post('/api/integrations/core/send-email', (req, res) => {
+app.post('/api/integrations/core/send-email', optionalAuth, (req, res) => {
   console.log('[API] SendEmail', req.body);
   res.json({ success: true, messageId: 'mock-email-id' });
 });
 
-app.post('/api/integrations/core/upload-file', (req, res) => {
+app.post('/api/integrations/core/upload-file', optionalAuth, (req, res) => {
   console.log('[API] UploadFile', req.body);
   res.json({ success: true, fileId: 'mock-file-id', url: 'https://example.com/mock-file' });
 });
 
+// Admin routes - serve admin UI
+// Note: Admin pages are React components that need to be built separately
+// For now, these routes return API info. Admin UI should be built and served as static files
+app.get('/admin', authMiddleware, (req, res) => {
+  res.json({ 
+    message: 'Admin interface',
+    note: 'Admin UI should be built as React app and served as static files',
+    routes: {
+      dashboard: '/admin',
+      clients: '/admin/clients',
+      agents: '/admin/agents',
+      payments: '/admin/payments',
+      intakes: '/admin/intakes',
+      aiEditor: '/admin/ai-editor',
+      settings: '/admin/settings'
+    }
+  });
+});
+
+app.get('/admin/*', authMiddleware, (req, res) => {
+  res.json({ 
+    message: 'Admin route',
+    path: req.path,
+    note: 'Admin UI should be built as React app and served as static files'
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Error handling middleware
@@ -223,20 +386,27 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not found', path: req.path });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Backend API server running on http://0.0.0.0:${PORT}`);
-  console.log(`Production URL: https://api.affynix.ai`);
-  console.log(`Admin URL: https://admin.affynix.ai`);
-  console.log(`Allowed origins: affynix.ai, admin.affynix.ai, localhost`);
-  console.log(`Available endpoints:`);
-  console.log(`  GET  /health`);
+// Setup WebSocket
+setupWebSocket(server);
+
+// Start server
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n🚀 Backend API server running on http://0.0.0.0:${PORT}`);
+  console.log(`📡 Production URL: https://api.affynix.ai`);
+  console.log(`🔧 Admin URL: https://admin.affynix.ai`);
+  console.log(`🌐 WebSocket: ws://localhost:${PORT}/ws`);
+  console.log(`\nAvailable endpoints:`);
+  console.log(`  POST /api/auth/register`);
+  console.log(`  POST /api/auth/login`);
   console.log(`  GET  /api/auth/me`);
+  console.log(`  POST /api/conversations`);
+  console.log(`  GET  /api/conversations/:id`);
+  console.log(`  POST /api/conversations/:id/messages`);
   console.log(`  GET  /api/entities/:entityName`);
   console.log(`  POST /api/entities/:entityName`);
   console.log(`  POST /api/entities/:entityName/filter`);
   console.log(`  PUT  /api/entities/:entityName/:id`);
   console.log(`  DELETE /api/entities/:entityName/:id`);
-  console.log(`  POST /api/functions/:functionName`);
   console.log(`  POST /api/integrations/core/invoke-llm`);
+  console.log(`  GET  /health\n`);
 });
-

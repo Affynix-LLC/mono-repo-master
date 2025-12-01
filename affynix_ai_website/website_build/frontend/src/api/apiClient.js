@@ -122,63 +122,151 @@ const integrations = {
   }
 };
 
-// Agents (for chat interface)
+// Get WebSocket URL
+const getWsUrl = () => {
+  const apiUrl = getApiUrl();
+  if (apiUrl.startsWith('https://')) {
+    return apiUrl.replace('https://', 'wss://');
+  } else if (apiUrl.startsWith('http://')) {
+    return apiUrl.replace('http://', 'ws://');
+  }
+  return 'ws://localhost:3001';
+};
+
+// Agents (for chat interface with WebSocket)
 const agents = {
+  subscribers: {},
+  wsConnections: {},
+
   async createConversation({ agent_name, metadata }) {
-    // Mock conversation creation
-    const conversation = {
-      id: `conv_${Date.now()}`,
-      agent_name,
-      metadata,
-      messages: []
-    };
-    return conversation;
+    const response = await apiCall('/api/conversations', {
+      method: 'POST',
+      body: JSON.stringify({ agent_name, metadata })
+    });
+    return response;
   },
 
   async addMessage(conversation, message) {
-    if (!conversation.messages) {
-      conversation.messages = [];
-    }
-    conversation.messages.push({
-      ...message,
-      id: `msg_${Date.now()}`,
-      timestamp: new Date().toISOString()
+    // Send message via API
+    await apiCall(`/api/conversations/${conversation.id}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(message)
     });
-    
-    // Simulate AI response
-    setTimeout(() => {
-      conversation.messages.push({
-        role: 'assistant',
-        content: 'This is a mock AI response. Connect to your LLM service to get real responses.',
-        id: `msg_${Date.now()}`,
-        timestamp: new Date().toISOString()
-      });
-      
-      // Trigger any subscribers
-      if (this.subscribers && this.subscribers[conversation.id]) {
-        this.subscribers[conversation.id].forEach(callback => {
-          callback(conversation);
-        });
-      }
-    }, 1000);
-    
+
+    // Also send via WebSocket for real-time delivery
+    const ws = this.getWebSocket(conversation.id);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'user_message',
+        content: message.content,
+        role: message.role || 'user'
+      }));
+    }
+
     return conversation;
   },
 
-  subscribeToConversation(conversationId, callback) {
-    if (!this.subscribers) {
-      this.subscribers = {};
+  getWebSocket(conversationId) {
+    if (!this.wsConnections[conversationId]) {
+      const wsUrl = `${getWsUrl()}/ws?conversation_id=${conversationId}`;
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log(`[WebSocket] Connected to conversation ${conversationId}`);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.handleWebSocketMessage(conversationId, data);
+        } catch (error) {
+          console.error('[WebSocket] Error parsing message:', error);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('[WebSocket] Error:', error);
+      };
+
+      ws.onclose = () => {
+        console.log(`[WebSocket] Disconnected from conversation ${conversationId}`);
+        delete this.wsConnections[conversationId];
+      };
+
+      this.wsConnections[conversationId] = ws;
     }
+    return this.wsConnections[conversationId];
+  },
+
+  handleWebSocketMessage(conversationId, data) {
+    const callbacks = this.subscribers[conversationId] || [];
+
+    if (data.type === 'conversation_state') {
+      // Initial state
+      callbacks.forEach(callback => {
+        callback(data.conversation);
+      });
+    } else if (data.type === 'message') {
+      // New message received
+      callbacks.forEach(callback => {
+        // Fetch updated conversation
+        apiCall(`/api/conversations/${conversationId}`).then(conv => {
+          callback(conv);
+        });
+      });
+    } else if (data.type === 'message_start') {
+      // AI started responding
+      callbacks.forEach(callback => {
+        callback({ type: 'message_start', messageId: data.messageId });
+      });
+    } else if (data.type === 'message_chunk') {
+      // Streaming chunk
+      callbacks.forEach(callback => {
+        callback({ 
+          type: 'message_chunk', 
+          messageId: data.messageId, 
+          chunk: data.chunk 
+        });
+      });
+    } else if (data.type === 'message_complete') {
+      // AI finished responding
+      callbacks.forEach(callback => {
+        apiCall(`/api/conversations/${conversationId}`).then(conv => {
+          callback(conv);
+        });
+      });
+    } else if (data.type === 'error') {
+      console.error('[WebSocket] Error:', data.error);
+      callbacks.forEach(callback => {
+        callback({ type: 'error', error: data.error });
+      });
+    }
+  },
+
+  subscribeToConversation(conversationId, callback) {
     if (!this.subscribers[conversationId]) {
       this.subscribers[conversationId] = [];
     }
     this.subscribers[conversationId].push(callback);
-    
+
+    // Connect WebSocket
+    this.getWebSocket(conversationId);
+
     // Return unsubscribe function
     return () => {
       const index = this.subscribers[conversationId].indexOf(callback);
       if (index > -1) {
         this.subscribers[conversationId].splice(index, 1);
+      }
+
+      // Close WebSocket if no more subscribers
+      if (this.subscribers[conversationId].length === 0) {
+        const ws = this.wsConnections[conversationId];
+        if (ws) {
+          ws.close();
+          delete this.wsConnections[conversationId];
+        }
+        delete this.subscribers[conversationId];
       }
     };
   }
