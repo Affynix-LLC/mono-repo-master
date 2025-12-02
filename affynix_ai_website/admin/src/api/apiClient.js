@@ -1,9 +1,16 @@
 // API client for admin pages - same as frontend but can be used in admin context
 // Production: api.affynix.ai, Development: localhost:3001
 const getApiUrl = () => {
+  // Vite replaces import.meta.env.VITE_API_URL at build time
+  // If set during build, use that value (this is the primary method)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  // Runtime fallback: check if we're in production based on hostname
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
     return `https://api.affynix.ai`;
   }
+  // Development fallback
   return 'http://localhost:3001';
 };
 
