@@ -14,7 +14,9 @@ COPY frontend/ .
 
 # Set build-time environment variables (Vite needs these at build time)
 ARG VITE_API_URL=http://localhost:3001
+ARG VITE_CONTACT_WEBHOOK_URL=
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_CONTACT_WEBHOOK_URL=$VITE_CONTACT_WEBHOOK_URL
 
 # Build the application
 RUN npm run build
@@ -41,4 +43,3 @@ EXPOSE 4173
 
 # Run preview server
 CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "4173"]
-

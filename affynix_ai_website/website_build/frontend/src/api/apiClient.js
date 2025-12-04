@@ -152,8 +152,7 @@ const agents = {
   },
 
   async addMessage(conversation, message) {
-    // Send message via API
-    await apiCall(`/api/conversations/${conversation.id}/messages`, {
+    const savedMessage = await apiCall(`/api/conversations/${conversation.id}/messages`, {
       method: 'POST',
       body: JSON.stringify(message)
     });
@@ -164,11 +163,12 @@ const agents = {
       ws.send(JSON.stringify({
         type: 'user_message',
         content: message.content,
-        role: message.role || 'user'
+        role: message.role || 'user',
+        messageId: savedMessage?.id
       }));
     }
 
-    return conversation;
+    return savedMessage || conversation;
   },
 
   getWebSocket(conversationId) {

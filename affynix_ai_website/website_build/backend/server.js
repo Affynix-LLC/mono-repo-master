@@ -5,6 +5,7 @@ import { dbHelpers } from './db.js';
 import { login, register, authMiddleware, optionalAuth } from './auth.js';
 import { invokeLLM, simpleLLMCall } from './llm.js';
 import { setupWebSocket } from './websocket.js';
+import { sendAgentConversationUpdate } from './zapier.js';
 
 const app = express();
 const server = createServer(app);
@@ -179,8 +180,9 @@ app.post('/api/conversations/:id/messages', optionalAuth, async (req, res) => {
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
-    // Save user message
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const timestamp = new Date().toISOString();
+
     dbHelpers.createMessage({
       id: messageId,
       conversation_id: conversationId,
@@ -188,13 +190,23 @@ app.post('/api/conversations/:id/messages', optionalAuth, async (req, res) => {
       content
     });
 
-    // Trigger LLM response (non-blocking, will be handled via WebSocket)
-    res.json({
+    const responseMessage = {
       id: messageId,
       role,
       content,
-      timestamp: new Date().toISOString()
-    });
+      timestamp
+    };
+
+    res.json(responseMessage);
+
+    if (role === 'user') {
+      const messages = dbHelpers.getMessagesByConversation(conversationId);
+      sendAgentConversationUpdate({
+        conversation,
+        messages,
+        latestMessage: responseMessage
+      });
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

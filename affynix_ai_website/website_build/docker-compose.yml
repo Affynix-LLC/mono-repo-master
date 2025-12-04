@@ -32,6 +32,7 @@ services:
       dockerfile: Dockerfile.frontend
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+        VITE_CONTACT_WEBHOOK_URL: ${VITE_CONTACT_WEBHOOK_URL:-}
     container_name: affynix-frontend
     env_file:
       - .env

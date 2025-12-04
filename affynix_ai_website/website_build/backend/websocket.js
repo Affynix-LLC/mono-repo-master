@@ -61,16 +61,25 @@ export const setupWebSocket = (server) => {
         }
 
         if (message.type === 'user_message') {
-          const { content, role = 'user' } = message;
+          const { content, role = 'user', messageId: providedMessageId } = message;
           
-          // Save user message to database
-          const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          dbHelpers.createMessage({
-            id: messageId,
-            conversation_id: conversationId,
-            role,
-            content
-          });
+          let messageId = providedMessageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          let existingMessage = null;
+
+          if (providedMessageId) {
+            existingMessage = dbHelpers.getMessageById(providedMessageId);
+          }
+
+          if (!existingMessage) {
+            dbHelpers.createMessage({
+              id: messageId,
+              conversation_id: conversationId,
+              role,
+              content
+            });
+          }
+
+          const timestamp = existingMessage?.created_at || new Date().toISOString();
 
           // Broadcast user message to all connections for this conversation
           broadcastToConversation(conversationId, {
@@ -79,7 +88,7 @@ export const setupWebSocket = (server) => {
               id: messageId,
               role,
               content,
-              timestamp: new Date().toISOString()
+              timestamp
             }
           });
 

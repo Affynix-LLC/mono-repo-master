@@ -53,6 +53,8 @@ Both domains should have SSL certificates configured (Let's Encrypt recommended)
 **Backend:**
 - `PORT=3001` (default)
 - `NODE_ENV=production`
+- `ZAPIER_AGENT_WEBHOOK_URL` - Optional. If set, every Agent01 conversation update is POSTed to this Zapier hook with the latest user input plus the message history transcript.
+- `VITE_CONTACT_WEBHOOK_URL` - Optional. If set, the Contact page submits directly to this Zapier hook (e.g., to drive an Airtable Zap).
 
 ## API Endpoints
 
@@ -69,4 +71,3 @@ Both domains should have SSL certificates configured (Let's Encrypt recommended)
 ## Local Development
 
 For local development, the frontend will automatically detect `localhost` and use `http://localhost:3001` for the API.
-

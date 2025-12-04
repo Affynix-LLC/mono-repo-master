@@ -2,20 +2,59 @@ import React, { useState } from "react";
 import HeaderBar from "@/components/HeaderBar";
 import { Mail, Phone, MessageSquare, Calendar } from "lucide-react";
 
+const CONTACT_WEBHOOK_URL = import.meta.env.VITE_CONTACT_WEBHOOK_URL;
+const initialFormState = {
+    name: "",
+    business: "",
+    industry: "",
+    website: "",
+    email: "",
+    message: ""
+};
+
 export default function Contact() {
-    const [formState, setFormState] = useState({ name: "", email: "", message: "" });
+    const [formState, setFormState] = useState(initialFormState);
     const [status, setStatus] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormState((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // In production hook into backend/email service. For now, show confirmation.
-        setStatus("Thanks for reaching out. Agent01 will follow up shortly.");
-        setFormState({ name: "", email: "", message: "" });
+        setIsSubmitting(true);
+        setStatus("Sending your message...");
+
+        if (!CONTACT_WEBHOOK_URL) {
+            setStatus("Contact form temporarily unavailable. Please email contact@affynix.ai.");
+            setIsSubmitting(false);
+            return;
+        }
+
+        try {
+            const response = await fetch(CONTACT_WEBHOOK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    ...formState,
+                    submittedAt: new Date().toISOString()
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Webhook responded with ${response.status}`);
+            }
+
+            setStatus("Thanks for reaching out. Agent01 will follow up shortly.");
+            setFormState(initialFormState);
+        } catch (error) {
+            console.error("Contact form webhook failed:", error);
+            setStatus("Something went wrong sending your message. Please try again.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -91,9 +130,10 @@ export default function Contact() {
                         </div>
                         <button
                             type="submit"
-                            className="w-full py-3 rounded-2xl bg-gradient-to-r from-yellow-400 to-yellow-300 text-black font-medium shadow-[0_15px_50px_rgba(255,215,0,0.25)] transition hover:opacity-90"
+                            disabled={isSubmitting}
+                            className="w-full py-3 rounded-2xl bg-gradient-to-r from-yellow-400 to-yellow-300 text-black font-medium shadow-[0_15px_50px_rgba(255,215,0,0.25)] transition hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                            Send Message
+                            {isSubmitting ? "Sending..." : "Send Message"}
                         </button>
                         {status && <p className="text-sm text-yellow-300">{status}</p>}
                     </form>
@@ -125,4 +165,3 @@ export default function Contact() {
         </div>
     );
 }
-

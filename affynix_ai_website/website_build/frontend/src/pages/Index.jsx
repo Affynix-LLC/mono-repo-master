@@ -142,7 +142,12 @@ export default function Index() {
         setChatStarted(false);
     };
 
-    const instructionCopy = "Welcome to Affynix. Click Start to speak with Agent01 for onboarding and to schedule your consultation. If you prefer to fill out a form instead, just ask and it will be provided.";
+    const instructionCopy = [
+        "Welcome to Affynix.",
+        "Start your onboarding with Agent01.",
+        "If you prefer to fill out a form instead, just ask and it will be provided.",
+        "Click Start to begin."
+    ];
 
     return (
         <div className="flex flex-col min-h-screen bg-black text-white font-sans relative overflow-hidden">
@@ -160,7 +165,12 @@ export default function Index() {
                                 AI-Powered Intake Agent
                             </p>
                             <p className="text-lg sm:text-xl text-gray-200 leading-relaxed max-w-2xl mx-auto">
-                                {instructionCopy}
+                                {instructionCopy.map((line, index) => (
+                                    <React.Fragment key={`${line}-${index}`}>
+                                        {line}
+                                        {index < instructionCopy.length - 1 && <br />}
+                                    </React.Fragment>
+                                ))}
                             </p>
                         </div>
                         <div className="flex justify-center">

@@ -206,6 +206,11 @@ export const dbHelpers = {
     return stmt.run(message.id, message.conversation_id, message.role, message.content);
   },
 
+  getMessageById: (id) => {
+    const stmt = db.prepare('SELECT * FROM messages WHERE id = ?');
+    return stmt.get(id);
+  },
+
   getMessagesByConversation: (conversationId) => {
     const stmt = db.prepare(`
       SELECT * FROM messages 
