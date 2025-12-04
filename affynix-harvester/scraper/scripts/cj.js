@@ -14,7 +14,7 @@
  */
 
 import { chromium } from 'playwright';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import { randomWait } from '../utils/proxy.js';
 
 const CJ_URL = 'https://www.cj.com/advertiser-directory';

@@ -26,7 +26,7 @@ const SCRAPERS = [
   { name: 'Generic', fn: generic }
 ];
 
-const INTAKE_URL = process.env.AFFYNIX_INTAKE_URL || 'https://affynix.com/api/scraper-intake';
+const INTAKE_URL = process.env.AFFYNIX_INTAKE_URL || 'https://api.affynix.ai/api/scraper-intake';
 const AUTH_KEY = process.env.AFFYNIX_SCRAPER_KEY || null;
 
 if (!AUTH_KEY) {

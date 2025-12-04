@@ -6,7 +6,7 @@
  */
 
 import { chromium } from 'playwright';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import { randomWait } from '../utils/proxy.js';
 
 const JVZOO_URL = 'https://www.jvzoo.com/marketplace';

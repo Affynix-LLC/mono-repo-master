@@ -9,7 +9,7 @@
  */
 
 import { chromium } from 'playwright';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import { randomWait } from '../utils/proxy.js';
 
 const IMPACT_URL = 'https://app.impact.com/advertiser-directory';

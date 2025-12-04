@@ -1,0 +1,21 @@
+{
+  "name": "affynix-intake-api",
+  "version": "1.0.0",
+  "description": "Intake API for Affynix Harvester - processes offers and creates subdomains",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "airtable": "^0.12.2",
+    "axios": "^1.6.2",
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+

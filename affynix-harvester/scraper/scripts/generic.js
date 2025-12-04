@@ -17,7 +17,7 @@
  */
 
 import { chromium } from 'playwright';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import { randomWait } from '../utils/proxy.js';
 
 // Placeholder: This will be replaced by environment variables or scraper config

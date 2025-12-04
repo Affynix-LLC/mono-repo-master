@@ -33,3 +33,7 @@ Thumbs.db
 # Docker
 *.log
 
+# Session storage (contains sensitive auth data)
+**/sessions/
+sessions/
+

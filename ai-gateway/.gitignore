@@ -1,2 +1,10 @@
-.vercel
-.env*.local
+node_modules/
+.env
+.env.local
+.env.production
+.tasks.json
+.webhooks.json
+.workflows.json
+.agents.json
+*.log
+.DS_Store

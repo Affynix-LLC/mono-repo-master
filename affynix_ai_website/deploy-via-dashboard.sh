@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Quick guide for Railway Dashboard deployment
+# Since CLI requires browser auth, dashboard is easier
+
+echo "🚀 Railway Dashboard Deployment Guide"
+echo "======================================"
+echo ""
+echo "Since Railway CLI requires browser authentication,"
+echo "the easiest way is to use the Railway Dashboard:"
+echo ""
+echo "1. Go to: https://railway.app"
+echo "2. Login/Register"
+echo "3. Click 'New Project' → 'Deploy from GitHub repo'"
+echo "4. Select your repository"
+echo ""
+echo "5. Configure Service:"
+echo "   - Root Directory: affynix_ai_website/website_build/backend"
+echo "   - Start Command: npm start"
+echo ""
+echo "6. Add Environment Variables:"
+echo "   - NODE_ENV=production"
+echo "   - PORT=3001"
+echo "   - DATABASE_PATH=/app/data/affynix.db"
+echo "   - JWT_SECRET=<generate with: openssl rand -hex 32>"
+echo "   - JWT_EXPIRES_IN=7d"
+echo "   - OPENAI_API_KEY=<your-key>"
+echo "   - LLM_MODEL=gpt-4-turbo-preview"
+echo ""
+echo "7. Deploy (happens automatically)"
+echo ""
+echo "8. Add Domain: api.affynix.ai"
+echo ""
+echo "📖 Full guide: RAILWAY_DASHBOARD_DEPLOY.md"
+echo ""
+echo "Opening Railway dashboard..."
+open "https://railway.app" 2>/dev/null || echo "Please visit: https://railway.app"
+
