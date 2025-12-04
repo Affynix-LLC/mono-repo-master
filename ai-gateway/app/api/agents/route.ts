@@ -1,18 +1,26 @@
 import { agentManager } from '../../../lib/agents/manager';
 import { Agent, AgentTask } from '../../../lib/agents/types';
+import { requireAuth } from '../../../lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 
 // Initialize agent manager
 agentManager.loadAgents().catch(console.error);
 
 // GET /api/agents - List all agents
-export async function GET() {
+export async function GET(req: Request) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   try {
     const agents = await agentManager.getAllAgents();
-    return new Response(JSON.stringify({ agents }), {
-      headers: { 'Content-Type': 'application/json' },
+    return new Response(JSON.stringify({ agents, count: agents.length }), {
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'X-Content-Type-Options': 'nosniff',
+      },
     });
   } catch (error: any) {
+    console.error('Agents GET error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -22,8 +30,11 @@ export async function GET() {
 
 // POST /api/agents - Create agent or execute agent task
 export async function POST(req: Request) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
+  
   try {
-    const body = await req.json();
+    const body = await req.json() as { action?: string; agent?: any; task?: any };
     const { action, agent, task } = body;
 
     if (action === 'execute' && task) {
@@ -37,7 +48,11 @@ export async function POST(req: Request) {
 
       const result = await agentManager.executeAgent(agentTask);
       return new Response(JSON.stringify({ result }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'X-Content-Type-Options': 'nosniff',
+        },
       });
     }
 
@@ -64,9 +79,14 @@ export async function POST(req: Request) {
 
     return new Response(JSON.stringify({ agent: newAgent }), {
       status: 201,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'X-Content-Type-Options': 'nosniff',
+      },
     });
   } catch (error: any) {
+    console.error('Agents POST error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

@@ -8,6 +8,9 @@ import * as contentTools from './content';
 import { affynixProductTools } from './affynix/products';
 import { affynixContentTools } from './affynix/content';
 import { affynixAnalyticsTools } from './affynix/analytics';
+import { scraperTools } from './scraper';
+import { socialMediaTools } from './social-media';
+import { backendTools } from './backend/backend-tools';
 
 export function registerAllTools(): void {
   // File Operations
@@ -115,6 +118,21 @@ export function registerAllTools(): void {
     toolRegistry.register(tool);
   }
   for (const tool of affynixAnalyticsTools) {
+    toolRegistry.register(tool);
+  }
+  
+  // Scraper Tools
+  for (const tool of scraperTools) {
+    toolRegistry.register(tool);
+  }
+  
+  // Social Media Tools
+  for (const tool of socialMediaTools) {
+    toolRegistry.register(tool);
+  }
+  
+  // Backend Development Tools
+  for (const tool of backendTools) {
     toolRegistry.register(tool);
   }
 }

@@ -4,6 +4,8 @@ import { ScheduledTask, TaskExecutionResult } from './types';
 import * as persistence from './persistence';
 import { route } from '../../router';
 import axios from 'axios';
+import { workflowEngine } from '../workflows/engine';
+import * as workflowPersistence from '../workflows/persistence';
 
 class TaskQueue {
   private jobs: Map<string, cron.ScheduledTask> = new Map();
@@ -68,8 +70,20 @@ class TaskQueue {
           break;
 
         case 'workflow':
-          // Workflow execution will be implemented in Phase 4
-          executionResult = { message: 'Workflow execution not yet implemented' };
+          // Execute workflow
+          const workflowId = task.action.config.workflowId;
+          if (!workflowId) {
+            throw new Error('workflowId is required for workflow action');
+          }
+          
+          const workflow = await workflowPersistence.getWorkflow(workflowId);
+          if (!workflow) {
+            throw new Error(`Workflow ${workflowId} not found`);
+          }
+          
+          const initialData = task.action.config.initialData || {};
+          const workflowExecution = await workflowEngine.execute(workflow, initialData);
+          executionResult = workflowExecution;
           break;
 
         default:

@@ -1,16 +1,24 @@
 import { workflowEngine } from '../../../lib/workflows/engine';
 import * as persistence from '../../../lib/workflows/persistence';
 import { Workflow } from '../../../lib/workflows/types';
+import { requireAuth } from '../../../lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 
 // GET /api/workflows - List all workflows
-export async function GET() {
+export async function GET(req: Request) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   try {
     const workflows = await persistence.loadWorkflows();
-    return new Response(JSON.stringify({ workflows }), {
-      headers: { 'Content-Type': 'application/json' },
+    return new Response(JSON.stringify({ workflows, count: workflows.length }), {
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'X-Content-Type-Options': 'nosniff',
+      },
     });
   } catch (error: any) {
+    console.error('Workflows GET error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -20,15 +28,22 @@ export async function GET() {
 
 // POST /api/workflows - Create or execute a workflow
 export async function POST(req: Request) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
+  
   try {
-    const body = await req.json();
+    const body = await req.json() as { action?: string; workflow?: any; initialData?: any };
     const { action, workflow, initialData } = body;
 
     if (action === 'execute' && workflow) {
       // Execute an existing workflow
       const execution = await workflowEngine.execute(workflow, initialData);
       return new Response(JSON.stringify({ execution }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'X-Content-Type-Options': 'nosniff',
+        },
       });
     }
 
@@ -54,9 +69,14 @@ export async function POST(req: Request) {
 
     return new Response(JSON.stringify({ workflow: newWorkflow }), {
       status: 201,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'X-Content-Type-Options': 'nosniff',
+      },
     });
   } catch (error: any) {
+    console.error('Workflows POST error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
