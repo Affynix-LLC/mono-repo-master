@@ -236,6 +236,9 @@ def main() -> int:
             raise
         except Exception as exc:
             print(f"ERROR processing {path}: {exc}")
+            # Move failed files to processed to prevent retry loops
+            move_to_processed(path)
+            print(f"Moved failed file {path} to processed/")
 
     return 0
 
