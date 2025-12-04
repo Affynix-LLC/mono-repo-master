@@ -1,5 +1,3 @@
-name: affynix-ai-stack
-
 services:
   backend:
     build:

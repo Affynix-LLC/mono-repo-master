@@ -1,15 +1,16 @@
 # Backend API server
-FROM node:20-alpine
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
 # Install build dependencies for native modules (better-sqlite3)
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     curl \
     python3 \
     make \
     g++ \
-    sqlite
+    sqlite3 \
+  && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY backend/package.json ./
@@ -28,4 +29,3 @@ EXPOSE 3001
 
 # Start server
 CMD ["npm", "start"]
-
