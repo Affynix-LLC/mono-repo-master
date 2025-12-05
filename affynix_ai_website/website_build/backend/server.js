@@ -531,6 +531,10 @@ app.post('/api/contact', async (req, res) => {
 
     // Save to database using existing dbHelpers
     const savedIntake = dbHelpers.create('intake_submissions', intakeData);
+    
+    if (!savedIntake) {
+      throw new Error('Failed to save contact submission to database');
+    }
 
     // If Zapier webhook is configured, send notification
     const webhookUrl = process.env.VITE_CONTACT_WEBHOOK_URL;
