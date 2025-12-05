@@ -512,7 +512,7 @@ app.post('/api/contact', async (req, res) => {
     }
 
     // Generate unique ID for intake submission
-    const submissionId = `intake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const submissionId = `intake_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
     // Map contact form fields to intake_submissions table schema
     const intakeData = {
