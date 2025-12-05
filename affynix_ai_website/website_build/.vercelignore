@@ -1,5 +1,6 @@
 backend/
 affynix_final_vercel/
+affynix_agent_sales_build/
 *.zip
 docker-compose.yml
 Dockerfile.*
