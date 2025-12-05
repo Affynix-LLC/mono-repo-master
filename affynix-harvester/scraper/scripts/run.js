@@ -89,5 +89,10 @@ async function runAll() {
   console.log('\n=== Affynix Autonomous Scraper Engine COMPLETE ===');
 }
 
-// Execute
+// Export for use in server.js
+export { runAll };
+
+// Execute if run directly (not imported)
+if (import.meta.url === `file://${process.argv[1]}`) {
 runAll();
+}

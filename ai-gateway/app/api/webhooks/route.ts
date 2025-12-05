@@ -55,7 +55,12 @@ export async function POST(req: Request) {
 }
 
 // GET /api/webhooks - List webhook configurations
-export async function GET() {
+export async function GET(req: Request) {
+  // Require authentication for listing webhooks
+  const { requireAuth } = await import('../../../lib/auth');
+  const authError = requireAuth(req);
+  if (authError) return authError;
+  
   try {
     const webhooks = await config.loadWebhooks();
     return new Response(JSON.stringify({ webhooks }), {

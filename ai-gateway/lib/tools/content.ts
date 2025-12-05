@@ -1,4 +1,10 @@
-import { route } from '../../router';
+import { generateText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import 'dotenv/config';
+
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function generateProductDescription(args: {
   productName: string;
@@ -6,6 +12,10 @@ export async function generateProductDescription(args: {
   features?: string[];
 }) {
   try {
+    if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_API_KEY.startsWith('sk-')) {
+      throw new Error('OPENAI_API_KEY is required for content generation');
+    }
+
     const featuresText = args.features?.length
       ? `\nFeatures: ${args.features.join(', ')}`
       : '';
@@ -16,7 +26,12 @@ Category: ${args.category}${featuresText}
 
 Write a professional, SEO-friendly product description that highlights benefits and features. Keep it concise but informative.`;
     
-    const result = await route(prompt);
+    const modelName = process.env.OPENAI_MODEL || 'gpt-4-turbo';
+    const result = await generateText({
+      model: openai(modelName),
+      messages: [{ role: 'user', content: prompt }],
+    });
+    
     return {
       productName: args.productName,
       category: args.category,
@@ -33,6 +48,10 @@ export async function generateSeoContent(args: {
   length?: 'short' | 'medium' | 'long';
 }) {
   try {
+    if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_API_KEY.startsWith('sk-')) {
+      throw new Error('OPENAI_API_KEY is required for content generation');
+    }
+
     const lengthInstructions = {
       short: 'Write a brief 150-200 word piece',
       medium: 'Write a medium-length 400-600 word piece',
@@ -47,7 +66,12 @@ ${lengthInstructions[args.length || 'medium']}
 
 Make sure to naturally incorporate the keywords and create engaging, valuable content.`;
     
-    const result = await route(prompt);
+    const modelName = process.env.OPENAI_MODEL || 'gpt-4-turbo';
+    const result = await generateText({
+      model: openai(modelName),
+      messages: [{ role: 'user', content: prompt }],
+    });
+    
     return {
       topic: args.topic,
       keywords: args.keywords,

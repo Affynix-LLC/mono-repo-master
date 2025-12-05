@@ -98,46 +98,32 @@ export default async function clickbank() {
         throw new Error('Login form not found');
       }
       
-      // Fill login form - try multiple selectors
-      const usernameSelectors = [
-        'input[name="username"]',
-        'input[name="email"]',
-        'input[type="email"]',
-        'input[id*="username"]',
-        'input[id*="email"]',
-        '#username',
-        '#email'
-      ];
+      // Fill login form using the found username field
+      await page.fill(usernameField, username);
+      console.log(`[ClickBank] Filled username field: ${usernameField}`);
       
+      // Find and fill password field
       const passwordSelectors = [
         'input[name="password"]',
         'input[type="password"]',
         '#password'
       ];
       
-      let filled = false;
-      for (const selector of usernameSelectors) {
-        try {
-          if (await page.locator(selector).count() > 0) {
-            await page.fill(selector, username);
-            filled = true;
-            break;
-          }
-        } catch (e) {}
-      }
-      
-      if (!filled) {
-        console.error('[ClickBank] Could not find username field');
-        throw new Error('Login form not found');
-      }
-      
+      let passwordFilled = false;
       for (const selector of passwordSelectors) {
         try {
           if (await page.locator(selector).count() > 0) {
             await page.fill(selector, password);
+            passwordFilled = true;
+            console.log(`[ClickBank] Filled password field: ${selector}`);
             break;
           }
         } catch (e) {}
+      }
+      
+      if (!passwordFilled) {
+        console.error('[ClickBank] Could not find password field');
+        throw new Error('Password field not found');
       }
       
       // Click submit button

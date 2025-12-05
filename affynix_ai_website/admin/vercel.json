@@ -12,5 +12,9 @@
   ],
   "env": {
     "VITE_API_URL": "https://api.affynix.ai"
+  },
+  "passwordProtection": {
+    "enabled": true,
+    "note": "Set ADMIN_GATE_PASSWORD environment variable in Vercel dashboard for password protection"
   }
 }

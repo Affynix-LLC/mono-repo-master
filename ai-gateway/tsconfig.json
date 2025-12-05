@@ -10,7 +10,8 @@
     "strict": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": false
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules"]

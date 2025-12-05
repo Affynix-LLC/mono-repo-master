@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import HeaderBar from "@/components/HeaderBar";
 import { Mail, Phone, MessageSquare, Calendar } from "lucide-react";
+import { api } from "@/api/apiClient";
 
-const CONTACT_WEBHOOK_URL = import.meta.env.VITE_CONTACT_WEBHOOK_URL;
 const initialFormState = {
     name: "",
     business: "",
@@ -27,30 +27,23 @@ export default function Contact() {
         setIsSubmitting(true);
         setStatus("Sending your message...");
 
-        if (!CONTACT_WEBHOOK_URL) {
-            setStatus("Contact form temporarily unavailable. Please email contact@affynix.ai.");
-            setIsSubmitting(false);
-            return;
-        }
-
         try {
-            const response = await fetch(CONTACT_WEBHOOK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    ...formState,
-                    submittedAt: new Date().toISOString()
-                })
+            // Create intake submission using the API
+            await api.entities.IntakeSubmission.create({
+                client_name: formState.name,
+                client_email: formState.email,
+                company: formState.business,
+                business_challenges: formState.message,
+                service_type: "Contact Form Inquiry",
+                source: "Contact Page",
+                status: "New",
+                notes: `Industry: ${formState.industry || 'Not specified'}, Website: ${formState.website || 'Not provided'}`
             });
-
-            if (!response.ok) {
-                throw new Error(`Webhook responded with ${response.status}`);
-            }
 
             setStatus("Thanks for reaching out. Agent01 will follow up shortly.");
             setFormState(initialFormState);
         } catch (error) {
-            console.error("Contact form webhook failed:", error);
+            console.error("Contact form submission failed:", error);
             setStatus("Something went wrong sending your message. Please try again.");
         } finally {
             setIsSubmitting(false);

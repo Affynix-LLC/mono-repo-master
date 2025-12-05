@@ -1,9 +1,12 @@
 import * as persistence from '../../../../lib/scheduler/persistence';
 import { taskQueue } from '../../../../lib/scheduler/queue';
 import { validateCronExpression, getNextRunTime } from '../../../../lib/scheduler/cron';
+import { requireAuth } from '../../../../lib/auth';
 
 // GET /api/tasks/[id] - Get a specific task
 export async function GET(req: Request, id: string) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   try {
     const task = await persistence.getTask(id);
     if (!task) {
@@ -25,8 +28,11 @@ export async function GET(req: Request, id: string) {
 
 // PUT /api/tasks/[id] - Update a task
 export async function PUT(req: Request, id: string) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
+  
   try {
-    const body = await req.json();
+    const body = await req.json() as any;
     const task = await persistence.getTask(id);
 
     if (!task) {
@@ -76,6 +82,8 @@ export async function PUT(req: Request, id: string) {
 
 // DELETE /api/tasks/[id] - Delete a task
 export async function DELETE(req: Request, id: string) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   try {
     const task = await persistence.getTask(id);
     if (!task) {

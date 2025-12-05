@@ -25,6 +25,9 @@ AFFYNIX_TARGET_CNAME=cname.vercel-dns.com
 VERCEL_API_TOKEN=your-vercel-token
 VERCEL_PROJECT_ID=your-project-id
 VERCEL_TEAM_ID=your-team-id
+
+# OpenAI (Required for AI-powered routing)
+OPENAI_API_KEY=sk-your-openai-api-key-here
 ```
 
 ### 2. Build and Start
@@ -89,13 +92,17 @@ curl -X POST http://localhost:3003/api/scraper-intake \
 ### Intake API (`intake-api`)
 - **Port**: 3003 (exposed to host)
 - **Health Check**: `/health`
-- **Endpoint**: `/api/scraper-intake`
+- **Endpoints**:
+  - `/api/scraper-intake` - Receive offers from scraper
+  - `/api/routing-feedback` - Submit routing corrections for learning
 - **Features**:
+  - AI-powered subdomain routing (uses OpenAI embeddings + LLM)
   - Rate limiting (100 req/min per IP)
   - Authentication via `X-AFFYNIX-SCRAPER` header
   - Cloudflare DNS creation
   - Vercel domain binding
   - Airtable integration
+  - Learning system that improves routing accuracy over time
 
 ### Scraper (`scraper`)
 - **Depends on**: `intake-api` (waits for health check)
@@ -147,6 +154,40 @@ docker-compose up --build -d
 - Intake API limits to 100 requests/minute per IP
 - If hitting limits, add delays between scraper requests
 
+### AI Routing not working
+- Verify `OPENAI_API_KEY` is set in `.env` file
+- Check logs: `docker-compose logs intake-api | grep "AI Router"`
+- If OpenAI API fails, system automatically falls back to static category-based routing
+- Monitor OpenAI API usage and costs
+
+### Submitting routing feedback
+- Use `/api/routing-feedback` endpoint to correct routing decisions
+- Format: `POST /api/routing-feedback` with `{ offerId, offerName, correctSubdomain, reason? }`
+- Feedback is stored in Airtable "RoutingHistory" table for learning
+
+## AI Routing System
+
+The intake API uses AI-powered routing to intelligently route offers to subdomains:
+
+1. **Embedding-based matching**: Uses OpenAI embeddings to find semantically similar subdomains
+2. **LLM refinement**: Uses GPT to make final routing decision with context
+3. **Learning system**: Stores routing decisions in Airtable and learns from feedback
+4. **Fallback safety**: Automatically falls back to static routing if AI fails
+
+### Airtable Setup for Learning
+
+Create a table called "RoutingHistory" with these fields:
+- **OfferName** (Single line text)
+- **Category** (Single line text)
+- **OriginalSubdomain** (Single line text) - AI's routing decision
+- **CorrectSubdomain** (Single line text) - Manual correction (optional)
+- **Confidence** (Number) - 0-1 confidence score
+- **Network** (Single line text)
+- **Summary** (Long text)
+- **Timestamp** (Date)
+- **Status** (Single select: pending, confirmed, corrected)
+- **Feedback** (Long text) - Optional reason for correction
+
 ## Production Deployment
 
 For production, consider:
@@ -155,4 +196,5 @@ For production, consider:
 3. **Monitoring**: Add Prometheus/Grafana
 4. **Logging**: Centralized logging (ELK, Loki)
 5. **Scaling**: Run multiple scraper instances with different networks
+6. **OpenAI Costs**: Monitor API usage and set usage limits
 

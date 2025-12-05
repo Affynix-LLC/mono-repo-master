@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { ToolDefinition } from '../types';
-import { route } from '../../../router';
+import { generateText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import 'dotenv/config';
+
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export const affynixContentTools: ToolDefinition[] = [
   {
@@ -13,6 +19,10 @@ export const affynixContentTools: ToolDefinition[] = [
       productCount: z.number().optional().describe('Number of products to reference'),
     }),
     execute: async (args) => {
+      if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_API_KEY.startsWith('sk-')) {
+        throw new Error('OPENAI_API_KEY is required for content generation');
+      }
+
       const prompt = `Generate SEO-optimized content for ${args.subdomain}.affynix.com about: ${args.topic}
 
 Keywords: ${args.keywords.join(', ')}
@@ -20,7 +30,11 @@ ${args.productCount ? `Reference approximately ${args.productCount} products.` :
 
 Create engaging, valuable content that naturally incorporates the keywords and aligns with the ${args.subdomain} subdomain theme.`;
       
-      const result = await route(prompt);
+      const modelName = process.env.OPENAI_MODEL || 'gpt-4-turbo';
+      const result = await generateText({
+        model: openai(modelName),
+        messages: [{ role: 'user', content: prompt }],
+      });
       return {
         subdomain: args.subdomain,
         topic: args.topic,
@@ -39,6 +53,10 @@ Create engaging, valuable content that naturally incorporates the keywords and a
       category: z.string().describe('Product category'),
     }),
     execute: async (args) => {
+      if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_API_KEY.startsWith('sk-')) {
+        throw new Error('OPENAI_API_KEY is required for content generation');
+      }
+
       const prompt = `Optimize this product description for ${args.subdomain}.affynix.com:
 
 Product: ${args.productName}
@@ -51,7 +69,11 @@ Create an optimized description that:
 3. Highlights benefits and features
 4. Is compelling and conversion-focused`;
       
-      const result = await route(prompt);
+      const modelName = process.env.OPENAI_MODEL || 'gpt-4-turbo';
+      const result = await generateText({
+        model: openai(modelName),
+        messages: [{ role: 'user', content: prompt }],
+      });
       return {
         subdomain: args.subdomain,
         productName: args.productName,

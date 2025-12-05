@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import { saveOfferToAirtable } from './lib/airtable.js';
 import { ensureSubdomainForCategory } from './lib/cloudflare.js';
 import { bindSubdomainToVercel } from './lib/vercel.js';
-import { classifyCategoryToSubdomain } from './utils/subdomainRouter.js';
+import { classifyCategoryToSubdomain, classifyCategoryToSubdomainAI } from './utils/subdomainRouter.js';
 import { formatOffer } from './utils/formatOffer.js';
 
 dotenv.config();
@@ -94,8 +94,15 @@ app.post('/api/scraper-intake', async (req, res) => {
     // Normalize + validate the offer object
     const offer = formatOffer(payload);
 
-    // Determine subdomain based on category taxonomy
-    const subdomain = classifyCategoryToSubdomain(offer.category);
+    // Determine subdomain using AI routing (with fallback to static routing)
+    let subdomain;
+    try {
+      subdomain = await classifyCategoryToSubdomainAI(offer);
+    } catch (error) {
+      console.error('[Affynix Intake] AI routing failed, using static fallback:', error);
+      subdomain = classifyCategoryToSubdomain(offer.category);
+      console.log(`[Affynix Intake] Static routing: "${offer.name}" → ${subdomain}`);
+    }
 
     // If subdomain does not exist → create it (Cloudflare)
     // Wrap in try-catch to prevent Cloudflare failures from blocking the response
@@ -142,6 +149,64 @@ app.post('/api/scraper-intake', async (req, res) => {
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'intake-api' });
+});
+
+/**
+ * Routing Feedback Endpoint
+ * 
+ * Allows manual correction of routing decisions to improve AI accuracy.
+ * Accepts: { offerId, offerName, correctSubdomain, reason? }
+ */
+app.post('/api/routing-feedback', async (req, res) => {
+  try {
+    const { offerId, offerName, correctSubdomain, reason } = req.body;
+
+    if (!correctSubdomain) {
+      return res.status(400).json({ message: 'correctSubdomain is required' });
+    }
+
+    if (!offerId && !offerName) {
+      return res.status(400).json({ message: 'Either offerId or offerName is required' });
+    }
+
+    // Import learning database functions
+    const { findRoutingDecision, recordFeedback } = await import('./lib/learning-db.js');
+
+    // Find the routing decision
+    let routingDecision = null;
+    if (offerId) {
+      routingDecision = await findRoutingDecision(null, offerId);
+    }
+    if (!routingDecision && offerName) {
+      routingDecision = await findRoutingDecision(offerName);
+    }
+
+    if (!routingDecision) {
+      return res.status(404).json({ message: 'Routing decision not found' });
+    }
+
+    // Record the feedback
+    const success = await recordFeedback(routingDecision.id, correctSubdomain, reason);
+
+    if (success) {
+      return res.status(200).json({
+        status: 'ok',
+        message: 'Feedback recorded successfully',
+        routingId: routingDecision.id,
+        originalSubdomain: routingDecision.subdomain,
+        correctSubdomain
+      });
+    } else {
+      return res.status(500).json({ message: 'Failed to record feedback' });
+    }
+
+  } catch (error) {
+    console.error('[Affynix Intake] Feedback endpoint error:', error);
+    return res.status(500).json({
+      message: 'Internal error',
+      error: String(error)
+    });
+  }
 });
 
 app.listen(PORT, () => {

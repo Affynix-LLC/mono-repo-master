@@ -7,6 +7,7 @@ import Payments from './pages/Payments';
 import IntakeViewer from './pages/IntakeViewer';
 import AIEditor from './pages/AIEditor';
 import Settings from './pages/Settings';
+import PasswordGate from './components/PasswordGate';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,6 +20,7 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
+    <PasswordGate>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
@@ -32,6 +34,7 @@ function App() {
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
+    </PasswordGate>
   );
 }
 

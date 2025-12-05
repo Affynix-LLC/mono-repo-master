@@ -1,7 +1,17 @@
-import { route } from '../../router';
+import { generateText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import 'dotenv/config';
+
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function transformJson(args: { data: any; transformation: string }) {
   try {
+    if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_API_KEY.startsWith('sk-')) {
+      throw new Error('OPENAI_API_KEY is required for JSON transformation');
+    }
+
     const prompt = `Transform the following JSON data according to this description: "${args.transformation}"
 
 Data:
@@ -9,7 +19,12 @@ ${JSON.stringify(args.data, null, 2)}
 
 Return only the transformed JSON data, no explanation.`;
     
-    const result = await route(prompt);
+    const modelName = process.env.OPENAI_MODEL || 'gpt-4-turbo';
+    const result = await generateText({
+      model: openai(modelName),
+      messages: [{ role: 'user', content: prompt }],
+    });
+    
     // Try to parse as JSON, if it fails return as-is
     try {
       return JSON.parse(result.text);
@@ -48,20 +63,24 @@ export async function aggregateData(args: {
           break;
         case 'sum':
           if (!args.field) throw new Error('Field required for sum operation');
-          result[key] = items.reduce((sum, item) => sum + (Number(item[args.field]) || 0), 0);
+          const sumField = args.field;
+          result[key] = items.reduce((sum, item) => sum + (Number(item[sumField]) || 0), 0);
           break;
         case 'avg':
           if (!args.field) throw new Error('Field required for avg operation');
-          const sum = items.reduce((s, item) => s + (Number(item[args.field]) || 0), 0);
+          const avgField = args.field;
+          const sum = items.reduce((s, item) => s + (Number(item[avgField]) || 0), 0);
           result[key] = sum / items.length;
           break;
         case 'min':
           if (!args.field) throw new Error('Field required for min operation');
-          result[key] = Math.min(...items.map((item) => Number(item[args.field]) || 0));
+          const minField = args.field;
+          result[key] = Math.min(...items.map((item) => Number(item[minField]) || 0));
           break;
         case 'max':
           if (!args.field) throw new Error('Field required for max operation');
-          result[key] = Math.max(...items.map((item) => Number(item[args.field]) || 0));
+          const maxField = args.field;
+          result[key] = Math.max(...items.map((item) => Number(item[maxField]) || 0));
           break;
       }
     }

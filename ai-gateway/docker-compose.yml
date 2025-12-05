@@ -1,0 +1,73 @@
+services:
+  ai-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AI_GATEWAY_API_KEY=${AI_GATEWAY_API_KEY:-}
+      - API_KEY=${API_KEY}
+      - AFFYNIX_API_KEY=${AFFYNIX_API_KEY:-}
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-}
+      - NEXT_PUBLIC_DOMAIN=${NEXT_PUBLIC_DOMAIN:-ai.affynix.ai}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4-turbo}
+    volumes:
+      # Persist data files
+      - ./data:/app/data
+      - ./.tasks.json:/app/.tasks.json
+      - ./.webhooks.json:/app/.webhooks.json
+      - ./.workflows.json:/app/.workflows.json
+      - ./.agents.json:/app/.agents.json
+    restart: unless-stopped
+    networks:
+      - ai-gateway-network
+
+  # Optional: Redis for distributed task queue
+  redis:
+    image: redis:7-alpine
+    container_name: ai-gateway-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - ai-gateway-network
+    profiles:
+      - with-redis
+
+  # Scheduler worker (runs scheduled tasks)
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-gateway-scheduler
+    command: pnpm scheduler
+    environment:
+      - NODE_ENV=production
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AI_GATEWAY_API_KEY=${AI_GATEWAY_API_KEY:-}
+      - API_KEY=${API_KEY}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+    volumes:
+      - ./data:/app/data
+      - ./.tasks.json:/app/.tasks.json
+    restart: unless-stopped
+    depends_on:
+      - ai-gateway
+    networks:
+      - ai-gateway-network
+    profiles:
+      - with-scheduler
+
+volumes:
+  redis-data:
+
+networks:
+  ai-gateway-network:
+    driver: bridge
+

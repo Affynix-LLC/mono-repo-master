@@ -8,3 +8,5 @@ node_modules/
 .agents.json
 *.log
 .DS_Store
+.vercel
+.env*.local

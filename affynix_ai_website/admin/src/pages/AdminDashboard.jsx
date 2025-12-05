@@ -3,7 +3,7 @@ import { api } from "../api/apiClient";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, DollarSign, FileText, TrendingUp, Bot } from "lucide-react";
+import { Users, DollarSign, FileText, TrendingUp, Bot, Database, Share2, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import AdminLayout from "../AdminLayout";
@@ -58,6 +58,36 @@ export default function AdminDashboard() {
     queryFn: () => api.entities.Agent.list(),
     enabled: !!user,
   });
+
+  // Scraper status
+  const [scraperStatus, setScraperStatus] = useState({ status: 'unknown', lastRun: null });
+  const [socialCampaigns, setSocialCampaigns] = useState([]);
+  const [knowledgeStats, setKnowledgeStats] = useState({ conversations: 0, knowledge: 0, feedback: 0 });
+
+  useEffect(() => {
+    // Fetch scraper status
+    fetch('https://api.affynix.ai/api/scraper/status')
+      .then(res => res.json())
+      .then(data => setScraperStatus(data))
+      .catch(() => setScraperStatus({ status: 'offline', lastRun: null }));
+
+    // Fetch social campaigns (from ai-gateway)
+    fetch('https://ai.affynix.ai/api/tasks', {
+      headers: { 'x-api-key': import.meta.env.VITE_AI_GATEWAY_API_KEY || '' }
+    })
+      .then(res => res.json())
+      .then(data => {
+        const socialTasks = (data.tasks || []).filter(t => t.name?.includes('Social Media'));
+        setSocialCampaigns(socialTasks);
+      })
+      .catch(() => setSocialCampaigns([]));
+
+    // Fetch knowledge stats (from Airtable or API)
+    fetch('https://api.affynix.ai/api/knowledge/stats')
+      .then(res => res.json())
+      .then(data => setKnowledgeStats(data))
+      .catch(() => setKnowledgeStats({ conversations: 0, knowledge: 0, feedback: 0 }));
+  }, []);
 
   if (!user) {
     return (
@@ -144,6 +174,116 @@ export default function AdminDashboard() {
                 </Link>
               </motion.div>
             ))}
+          </div>
+
+          {/* Automation Status Grid */}
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            {/* Scraper Status */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.6 }}
+            >
+              <Card className="backdrop-blur-xl bg-[#111111]/60 border border-[#C6A45E]/20">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <RefreshCw className="w-5 h-5 text-[#12F4FF]" />
+                    Scraper Status
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-400">Status</span>
+                    <span className={`text-sm font-semibold ${
+                      scraperStatus.status === 'running' ? 'text-[#10B981]' : 
+                      scraperStatus.status === 'offline' ? 'text-[#EF4444]' : 
+                      'text-[#F59E0B]'
+                    }`}>
+                      {scraperStatus.status === 'running' ? '● Running' : 
+                       scraperStatus.status === 'offline' ? '● Offline' : 
+                       '● Unknown'}
+                    </span>
+                  </div>
+                  {scraperStatus.lastRun && (
+                    <div className="text-xs text-gray-500 mt-2">
+                      Last run: {new Date(scraperStatus.lastRun).toLocaleString()}
+                    </div>
+                  )}
+                  <Button 
+                    size="sm" 
+                    className="mt-4 w-full bg-[#C6A45E] hover:bg-[#C6A45E]/80 text-[#0A0A0A]"
+                    onClick={() => {
+                      fetch('https://api.affynix.ai/api/scraper/trigger', { method: 'POST' })
+                        .then(() => alert('Scraper triggered'))
+                        .catch(() => alert('Failed to trigger scraper'));
+                    }}
+                  >
+                    Trigger Now
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Social Campaigns */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.7 }}
+            >
+              <Card className="backdrop-blur-xl bg-[#111111]/60 border border-[#C6A45E]/20">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Share2 className="w-5 h-5 text-[#12F4FF]" />
+                    Social Campaigns
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-white mb-1">
+                    {socialCampaigns.length}
+                  </div>
+                  <div className="text-sm text-gray-400 mb-4">Active campaigns</div>
+                  <div className="space-y-2">
+                    {socialCampaigns.slice(0, 2).map((campaign, idx) => (
+                      <div key={idx} className="text-xs text-gray-500">
+                        {campaign.name}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Knowledge Storage */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.8 }}
+            >
+              <Card className="backdrop-blur-xl bg-[#111111]/60 border border-[#C6A45E]/20">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Database className="w-5 h-5 text-[#12F4FF]" />
+                    Knowledge Storage
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-400">Conversations</span>
+                      <span className="text-sm font-semibold text-white">{knowledgeStats.conversations}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-400">Knowledge Items</span>
+                      <span className="text-sm font-semibold text-white">{knowledgeStats.knowledge}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-400">Feedback</span>
+                      <span className="text-sm font-semibold text-white">{knowledgeStats.feedback}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
 
           {/* Recent Activity Grid */}

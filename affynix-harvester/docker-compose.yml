@@ -12,12 +12,14 @@ services:
       - AIRTABLE_API_KEY=${AIRTABLE_API_KEY}
       - AIRTABLE_BASE_ID=${AIRTABLE_BASE_ID}
       - AIRTABLE_TABLE_OFFERS=${AIRTABLE_TABLE_OFFERS:-Offers}
+      - AIRTABLE_TABLE_ROUTING_HISTORY=${AIRTABLE_TABLE_ROUTING_HISTORY:-RoutingHistory}
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
       - CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID}
       - AFFYNIX_TARGET_CNAME=${AFFYNIX_TARGET_CNAME:-cname.vercel-dns.com}
       - VERCEL_API_TOKEN=${VERCEL_API_TOKEN}
       - VERCEL_PROJECT_ID=${VERCEL_PROJECT_ID}
       - VERCEL_TEAM_ID=${VERCEL_TEAM_ID}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     restart: unless-stopped
     networks:
       - affynix-network
@@ -36,9 +38,13 @@ services:
     depends_on:
       intake-api:
         condition: service_healthy
+    ports:
+      - "3004:3004"
     environment:
-      - AFFYNIX_INTAKE_URL=http://intake-api:3003/api/scraper-intake
+      - AFFYNIX_INTAKE_URL=${AFFYNIX_INTAKE_URL:-https://api.affynix.ai/api/scraper-intake}
       - AFFYNIX_SCRAPER_KEY=${AFFYNIX_SCRAPER_KEY}
+      - SCRAPER_PORT=3004
+      - SCRAPER_API_KEY=${SCRAPER_API_KEY}
       - CLICKBANK_USERNAME=${CLICKBANK_USERNAME}
       - CLICKBANK_PASSWORD=${CLICKBANK_PASSWORD}
       # Add other affiliate network credentials if needed
@@ -50,6 +56,13 @@ services:
     restart: unless-stopped
     networks:
       - affynix-network
+    command: ["node", "server.js"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3004/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
 networks:
   affynix-network:

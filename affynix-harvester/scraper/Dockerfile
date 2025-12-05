@@ -16,5 +16,5 @@ COPY . .
 # Install Chromium and dependencies
 RUN npx playwright install --with-deps chromium
 
-# Default command: run the unified scraper runner
-CMD ["node", "scripts/run.js"]
+# Default command: run the HTTP server (can trigger scraper via POST /trigger)
+CMD ["node", "server.js"]

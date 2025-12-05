@@ -36,14 +36,28 @@ export const affynixAnalyticsTools: ToolDefinition[] = [
       const analytics = await affynixClient.getAnalytics(args.subdomain, dateRange);
       
       // Generate report using AI
-      const { route } = await import('../../../router');
+      if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_API_KEY.startsWith('sk-')) {
+        throw new Error('OPENAI_API_KEY is required for report generation');
+      }
+
+      const { generateText } = await import('ai');
+      const { createOpenAI } = await import('@ai-sdk/openai');
+      
+      const openai = createOpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+
       const prompt = `Generate a ${args.format || 'summary'} analytics report based on this data:
 
 ${JSON.stringify(analytics, null, 2)}
 
 Create a clear, actionable report that highlights key metrics, trends, and insights.`;
       
-      const result = await route(prompt);
+      const modelName = process.env.OPENAI_MODEL || 'gpt-4-turbo';
+      const result = await generateText({
+        model: openai(modelName),
+        messages: [{ role: 'user', content: prompt }],
+      });
       return {
         subdomain: args.subdomain || 'all',
         report: result.text,

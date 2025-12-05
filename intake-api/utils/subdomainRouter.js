@@ -104,3 +104,25 @@ export function classifyCategoryToSubdomain(category) {
   return CATEGORY_MAP['default'];
 }
 
+/**
+ * AI-powered subdomain routing
+ * 
+ * Uses AI to intelligently route offers to subdomains based on semantic understanding.
+ * Falls back to static routing if AI is unavailable or fails.
+ * 
+ * @param {Object} offer - The offer object with name, category, summary, etc.
+ * @returns {Promise<string>} - The subdomain slug (e.g., 'health', 'business')
+ */
+export async function classifyCategoryToSubdomainAI(offer) {
+  try {
+    // Dynamic import to avoid circular dependencies
+    const { routeOffer } = await import('../lib/ai-router.js');
+    const result = await routeOffer(offer);
+    return result.subdomain;
+  } catch (error) {
+    console.error('[Subdomain Router] AI routing failed, using static fallback:', error);
+    // Fallback to static routing
+    return classifyCategoryToSubdomain(offer.category);
+  }
+}
+
