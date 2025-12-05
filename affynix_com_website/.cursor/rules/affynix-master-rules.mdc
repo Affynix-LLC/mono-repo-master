@@ -1,0 +1,121 @@
+# AFFYNIX DEPLOYMENT PROTOCOL - CURSOR AI AGENT INSTRUCTIONS
+
+## Project Context & Constraints
+
+You are working on the Affynix multi-subdomain platform located at `/dev/affynix-platform/`. This is a **production deployment** with 8 active subdomains serving affiliate marketing funnels. The codebase uses Next.js 14+ with App Router.
+
+## CRITICAL OPERATIONAL RULES
+
+### 1. Version Control Discipline
+
+- **NEVER** make automated commits without explicit user confirmation
+- **ALWAYS** show git diff before any commit operation
+- **PRESERVE** existing commit history - no force pushes without approval
+- **STASH** work-in-progress before branch operations
+- **VERIFY** remote sync status before any push operation
+- When suggesting git commands, explain the impact first
+
+### 2. File System Integrity
+
+- **BACKUP** before destructive operations (provide exact commands)
+- **VALIDATE** file paths exist before modifications
+- **PRESERVE** existing configuration files (next.config.js, package.json, .env)
+- **NEVER** delete files without explicit confirmation and backup plan
+- If modifying build config, explain deployment implications
+
+### 3. Code Quality Standards
+
+- **USE** JavaScript (.js) unless TypeScript (.ts) explicitly required
+- **FOLLOW** existing architectural patterns in the codebase
+- **MAINTAIN** consistency with `/lib/domain-detector.js` configuration system
+- **RESPECT** the modal-as-funnel design pattern (see `/components/`)
+- **PRESERVE** SEO optimization scripts in `/public/js/`
+
+### 4. Deployment Safety Protocol
+
+- **VERIFY** Vercel configuration before suggesting deployment commands
+- **CHECK** environment variables are properly set
+- **VALIDATE** all 8 subdomains route correctly before production deploy
+- **TEST** SEO network scripts inject properly
+- **CONFIRM** analytics integrations (Cloudfilt, Charla, ClickRank) are active
+
+### 5. Communication Standards
+
+- **EXPLAIN** your reasoning before executing operations
+- **SHOW** diffs/previews for file changes
+- **WARN** about potential breaking changes
+- **PROVIDE** rollback procedures for risky operations
+- **ASK** for confirmation on destructive or deployment operations
+
+## Domain Architecture Understanding
+
+The project serves 8 active subdomains with unique SEO profiles:
+
+- `affynix.com` (hub)
+- `business.affynix.com` (62 products - Digital Marketing, Business Dev)
+- `money.affynix.com` (89 products - Finance, Investing, Real Estate)
+- `health.affynix.com` (543 products - Fitness, Nutrition, Wellness)
+- `relationships.affynix.com` (140 products - Dating, Relationships)
+- `home.affynix.com` (171 products - Home, Lifestyle, Skills)
+- `tech.affynix.com` (Future B2B pivot - currently inactive)
+- `lifestyle.affynix.com` (Aggregate lifestyle content)
+
+Each subdomain uses:
+
+- Unique gradient theming (defined in `/lib/site-config.js`)
+- Domain-specific SEO packages
+- Cross-domain authority transfer (see `/public/js/seo-network-optimized.js`)
+- Modal-based conversion funnels (no separate landing pages)
+
+## Technical Stack Reference
+
+**Framework:** Next.js 14+ (App Router)
+**Styling:** Tailwind CSS with custom gold theme (#C9A961)
+**Routing:** Domain-based via `/lib/domain-detector.js`
+**Components:** React functional components in `/components/`
+**Modals:** See `/modals/` for conversion funnel patterns
+**Analytics:** Cloudfilt (srv21019), Charla (app.getcharla.com), ClickRank (js.clickrank.ai)
+**Deployment:** Vercel with multi-domain configuration
+**DNS:** Cloudflare with CNAME routing
+
+## Current State Awareness
+
+**Recent Issues:**
+
+- Git repository experienced sync conflicts from previous Cursor session
+- User lost 4 hours of work due to automated operations
+- Repository may have uncommitted changes or stuck push operations
+- User is recovering and needs **safe, predictable** operations only
+
+**Deployment Status:**
+
+- DNS configured for all 8 subdomains
+- Vercel domains need validation
+- Production deployment pending
+- .ai routing (affynix.ai) scheduled for today
+- .affynix TLD email infrastructure planned for 2-week timeline
+
+## Forbidden Operations (Without Explicit Approval)
+
+❌ `git push --force`
+❌ `git reset --hard` (without backup confirmation)
+❌ `rm -rf` on any directory
+❌ Automated commits or pushes
+❌ Modifying production environment variables
+❌ Deleting or renaming core configuration files
+❌ `vercel --prod` without pre-deployment checklist validation
+
+## Required Pre-Operation Protocols
+
+### Before ANY Git Operation
+
+```zsh
+# Show current state
+git status
+
+# Show what will change
+git diff
+
+# Confirm with user before executing---
+alwaysApply: true
+---

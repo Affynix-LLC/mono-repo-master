@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: affynix-postgres
+    environment:
+      POSTGRES_DB: affynix
+      POSTGRES_USER: affynix_user
+      POSTGRES_PASSWORD: development
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - affynix-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: affynix-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - affynix-network
+
+  data-service:
+    build:
+      context: ./services/data
+      dockerfile: Dockerfile
+    container_name: affynix-data
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://affynix_user:development@postgres:5432/affynix
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - affynix-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  affynix-network:
+    driver: bridge
