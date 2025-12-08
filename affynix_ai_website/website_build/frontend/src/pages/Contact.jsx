@@ -2,7 +2,12 @@ import React, { useState } from "react";
 import HeaderBar from "@/components/HeaderBar";
 import { Mail, Phone, MessageSquare, Calendar } from "lucide-react";
 
-const CONTACT_WEBHOOK_URL = import.meta.env.VITE_CONTACT_WEBHOOK_URL;
+const API_URL = import.meta.env.VITE_API_URL || (
+    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:3001'
+        : 'https://api.affynix.ai'
+);
+
 const initialFormState = {
     name: "",
     business: "",
@@ -27,14 +32,8 @@ export default function Contact() {
         setIsSubmitting(true);
         setStatus("Sending your message...");
 
-        if (!CONTACT_WEBHOOK_URL) {
-            setStatus("Contact form temporarily unavailable. Please email contact@affynix.ai.");
-            setIsSubmitting(false);
-            return;
-        }
-
         try {
-            const response = await fetch(CONTACT_WEBHOOK_URL, {
+            const response = await fetch(`${API_URL}/api/contact`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -43,14 +42,16 @@ export default function Contact() {
                 })
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                throw new Error(`Webhook responded with ${response.status}`);
+                throw new Error(data.error || `Server responded with ${response.status}`);
             }
 
             setStatus("Thanks for reaching out. Agent01 will follow up shortly.");
             setFormState(initialFormState);
         } catch (error) {
-            console.error("Contact form webhook failed:", error);
+            console.error("Contact form submission failed:", error);
             setStatus("Something went wrong sending your message. Please try again.");
         } finally {
             setIsSubmitting(false);

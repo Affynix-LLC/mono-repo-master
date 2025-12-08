@@ -499,6 +499,81 @@ app.post('/api/scraper-intake', async (req, res) => {
   }
 });
 
+// Contact form submission endpoint
+app.post('/api/contact', async (req, res) => {
+  try {
+    const { name, business, industry, website, email, message, submittedAt } = req.body;
+
+    // Validate required fields
+    if (!email || !message) {
+      return res.status(400).json({ 
+        error: 'Email and message are required fields' 
+      });
+    }
+
+    // Generate unique ID for intake submission
+    const submissionId = `intake_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+
+    // Map contact form fields to intake_submissions table schema
+    const intakeData = {
+      id: submissionId,
+      client_name: name || 'Anonymous',
+      client_email: email,
+      company: business || '',
+      phone: '',
+      service_type: industry || '',
+      business_challenges: message,
+      current_revenue: '',
+      team_size: '',
+      notes: website ? `Website: ${website}` : '',
+      status: 'New'
+    };
+
+    // Save to database using existing dbHelpers
+    const savedIntake = dbHelpers.create('intake_submissions', intakeData);
+    
+    if (!savedIntake) {
+      throw new Error('Failed to save contact submission to database');
+    }
+
+    // If Zapier webhook is configured, send notification
+    const webhookUrl = process.env.VITE_CONTACT_WEBHOOK_URL;
+    if (webhookUrl) {
+      try {
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            business,
+            industry,
+            website,
+            email,
+            message,
+            submittedAt: submittedAt || new Date().toISOString()
+          })
+        });
+      } catch (webhookError) {
+        // Log but don't fail the request if webhook fails
+        console.error('[Contact] Webhook notification failed:', webhookError);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Contact form submitted successfully',
+      submissionId
+    });
+
+  } catch (error) {
+    console.error('[Contact] Error processing submission:', error);
+    return res.status(500).json({
+      error: 'Failed to process contact form submission',
+      message: error.message
+    });
+  }
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -539,5 +614,6 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`  DELETE /api/entities/:entityName/:id`);
   console.log(`  POST /api/integrations/core/invoke-llm`);
   console.log(`  POST /api/scraper-intake`);
+  console.log(`  POST /api/contact`);
   console.log(`  GET  /health\n`);
 });
