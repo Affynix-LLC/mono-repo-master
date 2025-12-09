@@ -1,8 +1,7 @@
 import './App.css'
 import Pages from "@/pages/Index.jsx";
-import Contact from "@/pages/Contact.jsx";
 import { Toaster } from "@/components/ui/toaster";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import OpenAIAssistant from "@/components/OpenAIAssistant.jsx";
 
 function App() {
@@ -12,7 +11,8 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Pages />} />
-        <Route path="/contact" element={<Contact />} />
+        {/* Redirect any other routes (including /contact) to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />
       {assistantId && (
