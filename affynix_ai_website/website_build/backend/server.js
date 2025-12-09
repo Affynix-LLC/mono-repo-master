@@ -4,7 +4,6 @@ import { createServer } from 'http';
 import { dbHelpers } from './db.js';
 import { login, register, authMiddleware, optionalAuth } from './auth.js';
 import { invokeLLM, simpleLLMCall } from './llm.js';
-import OpenAI from 'openai';
 import { setupWebSocket } from './websocket.js';
 import { sendAgentConversationUpdate } from './zapier.js';
 import { saveOfferToAirtable } from './lib/airtable.js';
@@ -500,134 +499,77 @@ app.post('/api/scraper-intake', async (req, res) => {
   }
 });
 
-// OpenAI Assistant API endpoint
-// Initialize OpenAI if API key is available
-let openaiAssistant = null;
-if (process.env.OPENAI_API_KEY) {
+// Contact form submission endpoint
+app.post('/api/contact', async (req, res) => {
   try {
-    openaiAssistant = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const { name, business, industry, website, email, message, submittedAt } = req.body;
+
+    // Validate required fields
+    if (!email || !message) {
+      return res.status(400).json({ 
+        error: 'Email and message are required fields' 
+      });
+    }
+
+    // Generate unique ID for intake submission
+    const submissionId = `intake_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+
+    // Map contact form fields to intake_submissions table schema
+    const intakeData = {
+      id: submissionId,
+      client_name: name || 'Anonymous',
+      client_email: email,
+      company: business || '',
+      phone: '',
+      service_type: industry || '',
+      business_challenges: message,
+      current_revenue: '',
+      team_size: '',
+      notes: website ? `Website: ${website}` : '',
+      status: 'New'
+    };
+
+    // Save to database using existing dbHelpers
+    const savedIntake = dbHelpers.create('intake_submissions', intakeData);
+    
+    if (!savedIntake) {
+      throw new Error('Failed to save contact submission to database');
+    }
+
+    // If Zapier webhook is configured, send notification
+    const webhookUrl = process.env.VITE_CONTACT_WEBHOOK_URL;
+    if (webhookUrl) {
+      try {
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            business,
+            industry,
+            website,
+            email,
+            message,
+            submittedAt: submittedAt || new Date().toISOString()
+          })
+        });
+      } catch (webhookError) {
+        // Log but don't fail the request if webhook fails
+        console.error('[Contact] Webhook notification failed:', webhookError);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Contact form submitted successfully',
+      submissionId
+    });
+
   } catch (error) {
-    console.error('Failed to initialize OpenAI:', error);
-  }
-}
-const threadStore = new Map();
-
-app.post('/api/assistant', optionalAuth, async (req, res) => {
-  if (!openaiAssistant) {
-    return res.status(500).json({ error: 'OpenAI API key not configured' });
-  }
-
-  try {
-    const { action, assistantId, threadId, message, instructions } = req.body;
-
-    // Create a new thread
-    if (action === 'create-thread') {
-      const thread = await openaiAssistant.beta.threads.create();
-      threadStore.set(thread.id, thread.id);
-      return res.json({ threadId: thread.id });
-    }
-
-    // Add a message to the thread
-    if (action === 'add-message') {
-      if (!threadId || !message) {
-        return res.status(400).json({ error: 'threadId and message are required' });
-      }
-
-      await openaiAssistant.beta.threads.messages.create(threadId, {
-        role: 'user',
-        content: message,
-      });
-
-      return res.json({ success: true });
-    }
-
-    // Run the assistant and stream the response
-    if (action === 'run') {
-      if (!threadId || !assistantId) {
-        return res.status(400).json({ error: 'threadId and assistantId are required' });
-      }
-
-      const run = await openaiAssistant.beta.threads.runs.create(threadId, {
-        assistant_id: assistantId,
-        instructions: instructions || undefined,
-      });
-
-      // Set up streaming response headers
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-
-      // Poll for run completion and stream updates
-      const pollRun = async () => {
-        try {
-          let runStatus = await openaiAssistant.beta.threads.runs.retrieve(threadId, run.id);
-
-          while (runStatus.status === 'queued' || runStatus.status === 'in_progress') {
-            res.write(`data: ${JSON.stringify({ type: 'status', status: runStatus.status })}\n\n`);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            runStatus = await openaiAssistant.beta.threads.runs.retrieve(threadId, run.id);
-          }
-
-          if (runStatus.status === 'completed') {
-            // Get the messages
-            const messages = await openaiAssistant.beta.threads.messages.list(threadId, {
-              limit: 1,
-              order: 'desc',
-            });
-
-            const assistantMessage = messages.data[0];
-            if (assistantMessage && assistantMessage.role === 'assistant') {
-              const content = assistantMessage.content[0];
-              if (content.type === 'text') {
-                res.write(`data: ${JSON.stringify({ type: 'message', content: content.text.value })}\n\n`);
-              }
-            }
-
-            res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
-          } else if (runStatus.status === 'requires_action') {
-            res.write(`data: ${JSON.stringify({ type: 'error', error: 'Assistant requires action' })}\n\n`);
-          } else {
-            res.write(`data: ${JSON.stringify({ type: 'error', error: `Run failed: ${runStatus.status}` })}\n\n`);
-          }
-
-          res.end();
-        } catch (error) {
-          console.error('Streaming error:', error);
-          res.write(`data: ${JSON.stringify({ type: 'error', error: error.message })}\n\n`);
-          res.end();
-        }
-      };
-
-      pollRun();
-      return;
-    }
-
-    // Get messages from a thread
-    if (action === 'get-messages') {
-      if (!threadId) {
-        return res.status(400).json({ error: 'threadId is required' });
-      }
-
-      const messages = await openaiAssistant.beta.threads.messages.list(threadId, {
-        limit: 50,
-        order: 'asc',
-      });
-
-      const formattedMessages = messages.data.map((msg) => ({
-        id: msg.id,
-        role: msg.role,
-        content: msg.content[0]?.type === 'text' ? msg.content[0].text.value : '',
-        createdAt: msg.created_at,
-      }));
-
-      return res.json({ messages: formattedMessages });
-    }
-
-    return res.status(400).json({ error: 'Invalid action' });
-  } catch (error) {
-    console.error('Assistant API error:', error);
+    console.error('[Contact] Error processing submission:', error);
     return res.status(500).json({
-      error: error.message || 'Internal server error'
+      error: 'Failed to process contact form submission',
+      message: error.message
     });
   }
 });
@@ -647,56 +589,6 @@ app.use((err, req, res, next) => {
 app.use((req, res) => {
   console.log(`[404] ${req.method} ${req.path}`);
   res.status(404).json({ error: 'Not found', path: req.path });
-});
-
-// Knowledge API endpoints
-// Note: These functions would need to be imported from intake-api or implemented here
-// For now, we'll create placeholder endpoints that can be connected later
-
-// Knowledge API endpoints
-// These endpoints connect to Airtable via intake-api or can be implemented directly
-app.post('/api/knowledge/conversations', async (req, res) => {
-  try {
-    // Forward to intake-api or implement directly
-    const response = await fetch(`${process.env.INTAKE_API_URL || 'http://localhost:3003'}/api/knowledge/conversations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body)
-    });
-    const data = await response.json();
-    res.json(data);
-  } catch (error) {
-    console.error('[Knowledge API] Error saving conversation:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/knowledge/conversations', async (req, res) => {
-  try {
-    const params = new URLSearchParams(req.query);
-    const response = await fetch(`${process.env.INTAKE_API_URL || 'http://localhost:3003'}/api/knowledge/conversations?${params}`);
-    const data = await response.json();
-    res.json(data);
-  } catch (error) {
-    console.error('[Knowledge API] Error getting conversations:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/knowledge/stats', async (req, res) => {
-  try {
-    // Return placeholder stats - will be populated when knowledge is saved
-    res.json({ 
-      stats: { 
-        conversations: 0, 
-        knowledge: 0, 
-        feedback: 0 
-      } 
-    });
-  } catch (error) {
-    console.error('[Knowledge API] Error getting stats:', error);
-    res.status(500).json({ error: error.message });
-  }
 });
 
 // Setup WebSocket
@@ -722,5 +614,6 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`  DELETE /api/entities/:entityName/:id`);
   console.log(`  POST /api/integrations/core/invoke-llm`);
   console.log(`  POST /api/scraper-intake`);
+  console.log(`  POST /api/contact`);
   console.log(`  GET  /health\n`);
 });
