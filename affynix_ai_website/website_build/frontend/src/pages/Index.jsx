@@ -3,23 +3,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Bot, User, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import SettingsPanel from "../components/SettingsPanel";
 import Logo from "../components/Logo";
 import HeaderBar from "../components/HeaderBar";
 import { api } from "@/api/apiClient";
+
+const START_LABELS = ["Start", "Begin", "Enter"];
 
 export default function Index() {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [showSettings, setShowSettings] = useState(false);
     const [conversation, setConversation] = useState(null);
     const [chatStarted, setChatStarted] = useState(false);
+    const [startLabel, setStartLabel] = useState(START_LABELS[0]);
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
+
+    useEffect(() => {
+        const randomLabel = START_LABELS[Math.floor(Math.random() * START_LABELS.length)];
+        setStartLabel(randomLabel);
+    }, []);
 
     useEffect(() => {
         scrollToBottom();
@@ -142,59 +148,40 @@ export default function Index() {
         setChatStarted(false);
     };
 
-    const instructionCopy = [
-        "Welcome to Affynix.",
-        "Start your onboarding with Agent01.",
-        "If you prefer to fill out a form instead, just ask and it will be provided.",
-        "Click Start to begin."
-    ];
-
     return (
         <div className="flex flex-col min-h-screen bg-black text-white font-sans relative overflow-hidden">
             <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-cyan-500/20 rounded-full blur-[120px] pointer-events-none" />
-            <HeaderBar onOpenSettings={() => setShowSettings(true)} />
+            <HeaderBar />
 
             <main className="flex-1 flex items-center justify-center px-4 py-16 sm:py-24 relative">
                 {!chatStarted && (
                     <div className="max-w-3xl mx-auto text-center space-y-8">
                         <div className="flex justify-center">
-                            <Logo size="w-40 h-40" />
+                            <Logo size="w-44 h-44 sm:w-56 sm:h-56" />
                         </div>
-                        <div className="space-y-4">
-                            <p className="text-xs tracking-[0.6em] text-yellow-400 uppercase">
-                                AI-Powered Intake Agent
-                            </p>
-                            <p className="text-lg sm:text-xl text-gray-200 leading-relaxed max-w-2xl mx-auto">
-                                {instructionCopy.map((line, index) => (
-                                    <React.Fragment key={`${line}-${index}`}>
-                                        {line}
-                                        {index < instructionCopy.length - 1 && <br />}
-                                    </React.Fragment>
-                                ))}
-                            </p>
-                        </div>
+                        <p className="text-sm sm:text-base font-semibold tracking-[0.35em] text-yellow-300 uppercase">
+                            Agent01
+                        </p>
                         <div className="flex justify-center">
                             <Button
+                                className="relative group px-12 py-4 text-base sm:text-lg rounded-full shadow-[0_0_30px_rgba(212,175,55,0.45)] hover:shadow-[0_0_55px_rgba(212,175,55,0.65)] transition-all duration-300 ease-out hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                                 onClick={handleStartChat}
-                                className="px-12 py-4 text-base sm:text-lg rounded-full shadow-[0_20px_70px_rgba(255,215,0,0.35)]"
                                 style={{
                                     background:
                                         "linear-gradient(135deg, rgba(255,215,0,0.95), rgba(201,169,97,0.95))",
-                                    color: "#0b0b0b",
+                                    color: "#0b0b0b"
                                 }}
                             >
-                                Start
+                                <span
+                                    className="absolute inset-0 rounded-full bg-yellow-300/25 blur-2xl opacity-0 group-hover:opacity-80 group-hover:animate-pulse transition-all duration-300 pointer-events-none"
+                                    aria-hidden="true"
+                                />
+                                <span className="relative z-10">{startLabel}</span>
                             </Button>
                         </div>
                     </div>
                 )}
             </main>
-
-            <AnimatePresence>
-                {showSettings && (
-                    <SettingsPanel onClose={() => setShowSettings(false)} />
-                )}
-            </AnimatePresence>
 
             <AnimatePresence>
                 {chatStarted && (
