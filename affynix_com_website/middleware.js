@@ -24,15 +24,21 @@ export function middleware(request) {
   if (hostname.includes('.affynix.com')) {
     subdomain = hostname.split('.')[0];
   } else if (hostname.includes('vercel.app')) {
-    // For Vercel preview URLs, check if pathname starts with a subdomain
-    const pathSubdomain = pathname.split('/')[1];
-    const validSubdomains = [
-      'business', 'money', 'health', 'home', 'lifestyle', 
-      'relationships', 'tech', 'food', 'outdoors', 'travel', 
-      'leads', 'edu', 'sports'
-    ];
-    if (validSubdomains.includes(pathSubdomain)) {
-      return NextResponse.next(); // Already on correct path
+    // For Vercel preview URLs: affynix-<subdomain>-<hash>.vercel.app
+    const previewMatch = hostname.match(/^affynix-([^-]+)-/);
+    if (previewMatch) {
+      subdomain = previewMatch[1];
+    } else {
+      // Fallback: check the first path segment
+      const pathSubdomain = pathname.split('/')[1];
+      const validSubdomains = [
+        'business', 'money', 'health', 'home', 'lifestyle', 
+        'relationships', 'tech', 'food', 'outdoors', 'travel', 
+        'leads', 'edu', 'sports'
+      ];
+      if (validSubdomains.includes(pathSubdomain)) {
+        subdomain = pathSubdomain;
+      }
     }
   }
 
