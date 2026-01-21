@@ -5,7 +5,7 @@
  * Includes lead profile, sentiment analysis, opportunity assessment, and next steps
  */
 
-import { route } from '../../router';
+import { route } from '../../../router';
 import { Lead, Agent01Session, Agent02Session, ExecutiveBrief } from '../types';
 import { sentimentAnalyzer, SentimentAnalysis } from './sentiment-analysis';
 

@@ -11,7 +11,7 @@
 
 import { Lead, AgentCallSession, Agent02Session } from '../types';
 import { AgentInterface, AgentCapabilities, AgentPrompt, CallOutcome } from './types';
-import { route } from '../../router';
+import { route } from '../../../router';
 
 export class Agent02Discovery implements AgentInterface {
   name = 'Agent02 - Discovery Agent';

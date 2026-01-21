@@ -4,7 +4,7 @@
  * Analyzes agent call transcripts to extract sentiment, engagement, urgency, and readiness scores
  */
 
-import { route } from '../../router';
+import { route } from '../../../router';
 import { AgentCallSession, Lead } from '../types';
 
 export interface SentimentAnalysis {
@@ -28,7 +28,7 @@ export class SentimentAnalyzer {
     }
 
     const text = session.transcript || session.summary || '';
-    return await this.analyzeTtext(text);
+    return await this.analyzeText(text);
   }
 
   /**

@@ -10,7 +10,7 @@
 
 import { Lead, AgentCallSession, Agent01Session } from '../types';
 import { AgentInterface, AgentCapabilities, AgentPrompt, CallOutcome } from './types';
-import { route } from '../../router';
+import { route } from '../../../router';
 
 export class Agent01Intake implements AgentInterface {
   name = 'Agent01 - Intake Agent';
