@@ -44,12 +44,13 @@ jobs:
         id: deploy
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
         working-directory: affynix_ai_website/website_build/backend
         run: |
           echo "Deploying backend to Railway..."
 
           # Validate required secrets
-          if [ -z "${{ secrets.RAILWAY_SERVICE_ID }}" ]; then
+          if [ -z "$RAILWAY_SERVICE_ID" ]; then
             echo "❌ ERROR: RAILWAY_SERVICE_ID secret is not set!"
             echo "Please add your Railway Service ID to GitHub Secrets:"
             echo "1. Go to your Railway project settings"
@@ -58,33 +59,34 @@ jobs:
             exit 1
           fi
 
-          SERVICE_ID="${{ secrets.RAILWAY_SERVICE_ID }}"
-          echo "Using Railway Service ID: $SERVICE_ID"
+          echo "Using Railway Service ID: $RAILWAY_SERVICE_ID"
 
-          # Set environment variables using Railway CLI with --service flag
+          # Set environment variables using Railway CLI
+          # Railway CLI will automatically use RAILWAY_SERVICE_ID env var
           echo "Setting environment variables..."
-          railway variables --service "$SERVICE_ID" set NODE_ENV=production
-          railway variables --service "$SERVICE_ID" set PORT=3001
-          railway variables --service "$SERVICE_ID" set DATABASE_PATH=/app/data/affynix.db
-          railway variables --service "$SERVICE_ID" set JWT_SECRET='${{ secrets.JWT_SECRET || '4d8a0a607ab63d151d1eff6254d4495f9ab78d9829f810962a85c8093ba1e20d' }}'
-          railway variables --service "$SERVICE_ID" set JWT_EXPIRES_IN=7d
-          railway variables --service "$SERVICE_ID" set LLM_MODEL=gpt-4-turbo-preview
+          railway variables set NODE_ENV=production
+          railway variables set PORT=3001
+          railway variables set DATABASE_PATH=/app/data/affynix.db
+          railway variables set JWT_SECRET='${{ secrets.JWT_SECRET || '4d8a0a607ab63d151d1eff6254d4495f9ab78d9829f810962a85c8093ba1e20d' }}'
+          railway variables set JWT_EXPIRES_IN=7d
+          railway variables set LLM_MODEL=gpt-4-turbo-preview
 
           # Set OpenAI API key if provided
           if [ -n "${{ secrets.OPENAI_API_KEY }}" ]; then
-            railway variables --service "$SERVICE_ID" set OPENAI_API_KEY='${{ secrets.OPENAI_API_KEY }}'
+            railway variables set OPENAI_API_KEY='${{ secrets.OPENAI_API_KEY }}'
           fi
 
-          # Deploy using Railway CLI with --service flag
+          # Deploy using Railway CLI
+          # Railway CLI will automatically use RAILWAY_SERVICE_ID env var
           echo "Deploying to Railway..."
-          railway up --service "$SERVICE_ID" --detach
+          railway up --detach
 
           # Wait a moment for deployment to register
           sleep 5
 
           # Get the deployment URL
           echo "Fetching deployment URL..."
-          BACKEND_URL=$(railway domain --service "$SERVICE_ID" 2>/dev/null || echo "")
+          BACKEND_URL=$(railway domain 2>/dev/null || echo "")
 
           if [ -z "$BACKEND_URL" ]; then
             echo "⚠️  Could not automatically get Railway URL"
