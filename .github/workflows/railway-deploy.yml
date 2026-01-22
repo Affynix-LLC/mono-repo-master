@@ -1,0 +1,33 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'affynix_ai_website/website_build/backend/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        working-directory: affynix_ai_website/website_build/backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway link 2ed7d840-58c5-4ac6-aed3-7985afb09bc6 --environment f7f5311d-4173-4f1d-9b74-d060f9f10ef3
+          railway up --detach --service 93c04435-fd32-4194-baf7-5e02759cd2ed
+
+      - name: Deployment Status
+        run: |
+          echo "✅ Backend deployed to Railway!"
+          echo "🚀 URL: https://affynix-backend-production.up.railway.app"
