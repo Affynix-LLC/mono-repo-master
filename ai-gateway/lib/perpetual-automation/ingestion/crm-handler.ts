@@ -141,7 +141,7 @@ export class CRMIngestionHandler extends BaseIngestionHandler {
       return data.fullName;
     }
 
-    const parts = [];
+    const parts: string[] = [];
     if (data.firstName) parts.push(data.firstName);
     if (data.lastName) parts.push(data.lastName);
 

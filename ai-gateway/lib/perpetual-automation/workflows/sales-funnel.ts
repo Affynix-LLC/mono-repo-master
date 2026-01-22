@@ -14,6 +14,9 @@ export const salesFunnelWorkflow: Workflow = {
   name: 'Perpetual Automation Sales Funnel',
   description: 'Multi-agent sales funnel with Agent01, Agent02, and human handoff',
   version: '1.0',
+  enabled: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
   steps: [
     {
       id: 'ingest_lead',
@@ -206,6 +209,9 @@ export const disqualifiedLeadWorkflow: Workflow = {
   name: 'Disqualified Lead Nurture Workflow',
   description: 'Handle and nurture disqualified leads',
   version: '1.0',
+  enabled: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
   steps: [
     {
       id: 'update_status',
@@ -269,6 +275,9 @@ export const emergencyEscalationWorkflow: Workflow = {
   name: 'Emergency Escalation Workflow',
   description: 'Immediate escalation for high-value or urgent leads',
   version: '1.0',
+  enabled: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
   steps: [
     {
       id: 'flag_as_urgent',

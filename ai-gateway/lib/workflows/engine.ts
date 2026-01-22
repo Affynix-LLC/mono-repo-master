@@ -59,15 +59,16 @@ export class WorkflowEngine {
           } catch (error: any) {
             // Handle retries
             const retryCount = (execution.errors.get(`${step.id}_retries`) || 0) as number;
-            const maxRetries = step.retry?.maxAttempts || 0;
+            const retryConfig = step.retry;
+            const maxRetries = retryConfig?.maxAttempts || 0;
 
-            if (retryCount < maxRetries) {
+            if (retryCount < maxRetries && retryConfig) {
               execution.errors.set(`${step.id}_retries`, String(retryCount + 1));
               execution.stepStatuses.set(step.id, 'pending');
-              
+
               // Wait before retry
-              if (step.retry?.delay) {
-                await new Promise((resolve) => setTimeout(resolve, step.retry.delay));
+              if (retryConfig.delay) {
+                await new Promise((resolve) => setTimeout(resolve, retryConfig.delay));
               }
               continue; // Retry this step
             } else {

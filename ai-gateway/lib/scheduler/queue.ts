@@ -94,9 +94,10 @@ class TaskQueue {
       result.result = executionResult;
 
       // Update task last run
+      const nextRun = this.getNextRunTime(task.cronExpression);
       await persistence.updateTask(task.id, {
         lastRun: new Date(),
-        nextRun: this.getNextRunTime(task.cronExpression),
+        nextRun: nextRun === null ? undefined : nextRun,
         runCount: task.runCount + 1,
       });
     } catch (error: any) {

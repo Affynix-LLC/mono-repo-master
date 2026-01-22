@@ -1,0 +1,266 @@
+name: Deploy Affynix Backend & Admin
+
+on:
+  workflow_dispatch:
+    inputs:
+      admin_email:
+        description: 'Admin user email'
+        required: false
+        default: 'admin@affynix.ai'
+      admin_name:
+        description: 'Admin user name'
+        required: false
+        default: 'Admin User'
+  push:
+    branches:
+      - claude/build-affynix-automation-plvPW
+    paths:
+      - 'affynix_ai_website/**'
+      - '.github/workflows/deploy-affynix.yml'
+
+env:
+  NODE_VERSION: '24.x'
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend to Railway
+    runs-on: ubuntu-latest
+    outputs:
+      backend_url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        id: deploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+        working-directory: affynix_ai_website/website_build/backend
+        run: |
+          echo "Deploying backend to Railway..."
+
+          # Validate required secrets
+          if [ -z "$RAILWAY_SERVICE_ID" ]; then
+            echo "❌ ERROR: RAILWAY_SERVICE_ID secret is not set!"
+            echo "Please add your Railway Service ID to GitHub Secrets:"
+            echo "1. Go to your Railway project settings"
+            echo "2. Copy the Service ID"
+            echo "3. Add it as RAILWAY_SERVICE_ID in GitHub Secrets"
+            exit 1
+          fi
+
+          echo "Using Railway Service ID: $RAILWAY_SERVICE_ID"
+
+          # Set environment variables using Railway CLI
+          # Railway CLI will automatically use RAILWAY_SERVICE_ID env var
+          echo "Setting environment variables..."
+          railway variables set NODE_ENV=production
+          railway variables set PORT=3001
+          railway variables set DATABASE_PATH=/app/data/affynix.db
+          railway variables set JWT_SECRET='${{ secrets.JWT_SECRET || '4d8a0a607ab63d151d1eff6254d4495f9ab78d9829f810962a85c8093ba1e20d' }}'
+          railway variables set JWT_EXPIRES_IN=7d
+          railway variables set LLM_MODEL=gpt-4-turbo-preview
+
+          # Set OpenAI API key if provided
+          if [ -n "${{ secrets.OPENAI_API_KEY }}" ]; then
+            railway variables set OPENAI_API_KEY='${{ secrets.OPENAI_API_KEY }}'
+          fi
+
+          # Deploy using Railway CLI
+          # Railway CLI will automatically use RAILWAY_SERVICE_ID env var
+          echo "Deploying to Railway..."
+          railway up --detach
+
+          # Wait a moment for deployment to register
+          sleep 5
+
+          # Get the deployment URL
+          echo "Fetching deployment URL..."
+          BACKEND_URL=$(railway domain 2>/dev/null || echo "")
+
+          if [ -z "$BACKEND_URL" ]; then
+            echo "⚠️  Could not automatically get Railway URL"
+            echo "Please check your Railway dashboard for the deployment URL"
+            echo "url=RAILWAY_DEPLOYMENT_CHECK_DASHBOARD" >> $GITHUB_OUTPUT
+          else
+            # Ensure URL has https://
+            if [[ ! "$BACKEND_URL" =~ ^https?:// ]]; then
+              BACKEND_URL="https://$BACKEND_URL"
+            fi
+            echo "url=$BACKEND_URL" >> $GITHUB_OUTPUT
+            echo "✅ Backend deployed to: $BACKEND_URL"
+          fi
+
+      - name: Wait for backend to be ready
+        run: |
+          echo "Waiting for backend to be ready..."
+          BACKEND_URL="${{ steps.deploy.outputs.url }}"
+
+          if [ "$BACKEND_URL" = "RAILWAY_DEPLOYMENT_CHECK_DASHBOARD" ]; then
+            echo "⚠️  Please check Railway dashboard manually for deployment status"
+            echo "Visit: https://railway.app/dashboard"
+            exit 0
+          fi
+
+          echo "Checking backend at: $BACKEND_URL/health"
+          for i in {1..30}; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/health" 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Backend is ready! (HTTP $HTTP_CODE)"
+              exit 0
+            fi
+            echo "Attempt $i/30: Backend not ready yet (HTTP $HTTP_CODE), waiting 10s..."
+            sleep 10
+          done
+          echo "⚠️  Backend did not respond after 5 minutes"
+          echo "Check Railway logs: https://railway.app/dashboard"
+          exit 1
+
+  deploy-admin:
+    name: Deploy Admin to Vercel
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+    outputs:
+      admin_url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      - name: Create production environment file
+        working-directory: affynix_ai_website/admin
+        run: |
+          echo "VITE_API_URL=${{ needs.deploy-backend.outputs.backend_url }}" > .env.production
+          cat .env.production
+
+      - name: Deploy to Vercel
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        working-directory: affynix_ai_website/admin
+        run: |
+          echo "Deploying admin to Vercel..."
+
+          # Deploy to production
+          if [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+            ADMIN_URL=$(vercel --prod --token=$VERCEL_TOKEN --yes)
+          else
+            ADMIN_URL=$(vercel --prod --token=$VERCEL_TOKEN --yes)
+          fi
+
+          echo "url=$ADMIN_URL" >> $GITHUB_OUTPUT
+          echo "Admin deployed to: $ADMIN_URL"
+
+      - name: Wait for admin to be ready
+        run: |
+          echo "Waiting for admin to be ready..."
+          ADMIN_URL="${{ steps.deploy.outputs.url }}"
+          for i in {1..20}; do
+            if curl -f "$ADMIN_URL" 2>/dev/null; then
+              echo "Admin is ready!"
+              exit 0
+            fi
+            echo "Attempt $i: Admin not ready yet, waiting..."
+            sleep 10
+          done
+          echo "Admin failed to respond after 3 minutes"
+          exit 1
+
+  create-admin-user:
+    name: Create Admin User
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-admin]
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Create first admin user
+        env:
+          BACKEND_URL: ${{ needs.deploy-backend.outputs.backend_url }}
+          ADMIN_EMAIL: ${{ github.event.inputs.admin_email || 'admin@affynix.ai' }}
+          ADMIN_NAME: ${{ github.event.inputs.admin_name || 'Admin User' }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        run: |
+          if [ -z "$ADMIN_PASSWORD" ]; then
+            echo "⚠️  ADMIN_PASSWORD secret not set. Skipping user creation."
+            echo "You can create a user manually by calling POST $BACKEND_URL/api/register"
+            exit 0
+          fi
+
+          echo "Creating admin user..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BACKEND_URL/api/register" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"email\": \"$ADMIN_EMAIL\",
+              \"password\": \"$ADMIN_PASSWORD\",
+              \"name\": \"$ADMIN_NAME\"
+            }")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+
+          if [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Admin user created successfully!"
+            echo "Email: $ADMIN_EMAIL"
+          elif echo "$BODY" | grep -q "already exists"; then
+            echo "ℹ️  Admin user already exists"
+          else
+            echo "❌ Failed to create admin user (HTTP $HTTP_CODE)"
+            echo "$BODY"
+            exit 1
+          fi
+
+  deployment-summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-admin]
+    if: always()
+
+    steps:
+      - name: Create deployment summary
+        run: |
+          echo "# 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Backend (Railway)" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.deploy-backend.result }}" = "success" ]; then
+            echo "✅ **Status:** Deployed Successfully" >> $GITHUB_STEP_SUMMARY
+            echo "🔗 **URL:** ${{ needs.deploy-backend.outputs.backend_url }}" >> $GITHUB_STEP_SUMMARY
+            echo "🏥 **Health Check:** ${{ needs.deploy-backend.outputs.backend_url }}/health" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Status:** Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "## Admin Dashboard (Vercel)" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.deploy-admin.result }}" = "success" ]; then
+            echo "✅ **Status:** Deployed Successfully" >> $GITHUB_STEP_SUMMARY
+            echo "🔗 **URL:** ${{ needs.deploy-admin.outputs.admin_url }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Status:** Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "## Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Visit the admin dashboard at the URL above" >> $GITHUB_STEP_SUMMARY
+          echo "2. Log in with your admin credentials" >> $GITHUB_STEP_SUMMARY
+          echo "3. Test the perpetual automation system" >> $GITHUB_STEP_SUMMARY
+          echo "4. Monitor logs in Railway and Vercel dashboards" >> $GITHUB_STEP_SUMMARY

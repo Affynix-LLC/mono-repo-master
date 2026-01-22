@@ -222,7 +222,7 @@ async function example6_GetAuditLogs() {
 
   if (result.success && result.lead) {
     // Get all logs for this lead
-    const logs = orchestrator.getAuditLogs({ entityId: result.lead.id });
+    const logs = await orchestrator.getAuditLogs({ entityId: result.lead.id });
 
     console.log(`Found ${logs.length} audit log entries for lead ${result.lead.id}:`);
     logs.forEach((log, index) => {

@@ -1,6 +1,101 @@
 # Affynix Deployment Guide
 
-## Prerequisites
+## Railway Deployment (Production)
+
+### Live URL
+**Production Backend:** https://affynix-backend-production.up.railway.app
+
+### Project Details
+- **Project ID:** `2ed7d840-58c5-4ac6-aed3-7985afb09bc6`
+- **Service ID:** `93c04435-fd32-4194-baf7-5e02759cd2ed`
+- **Environment:** `production`
+
+### Manual Deployment to Railway
+
+Deploy manually from your local machine:
+
+```bash
+cd affynix_ai_website/website_build/backend
+railway up --detach
+```
+
+### Automated Deployment (GitHub Actions)
+
+The backend automatically deploys to Railway when:
+- Code is pushed to the `main` branch
+- Changes are made in `affynix_ai_website/website_build/backend/`
+
+#### Required GitHub Secret
+
+Add the following secret to your GitHub repository:
+
+1. Go to: **Settings → Secrets and variables → Actions**
+2. Click **New repository secret**
+3. Add:
+   - **Name:** `RAILWAY_TOKEN`
+   - **Value:** Your Railway API token
+
+To get your Railway token:
+```bash
+cat ~/.railway/config.json | grep token
+```
+
+Or get it from Railway dashboard: Settings → Tokens
+
+### Railway Environment Variables
+
+The following environment variables are configured in Railway:
+
+- `NODE_ENV=production`
+- `PORT=3001`
+- `DATABASE_PATH=/app/data/affynix.db`
+- `JWT_SECRET` (configured)
+- `JWT_EXPIRES_IN=7d`
+- `OPENAI_API_KEY` (configured)
+- `LLM_MODEL=gpt-4-turbo-preview`
+- `HUME_API_KEY` (configured)
+- `HUME_SECRET_KEY` (configured)
+- `HUME_CONFIG_ID` (configured)
+- `ZAPIER_AGENT_WEBHOOK_URL` (configured)
+- `VITE_CONTACT_WEBHOOK_URL` (configured)
+
+### Health Check
+
+Verify Railway deployment:
+```bash
+curl https://affynix-backend-production.up.railway.app/health
+```
+
+Expected response: `200 OK`
+
+### Railway Troubleshooting
+
+**View logs:**
+```bash
+cd affynix_ai_website/website_build/backend
+railway logs
+```
+
+**Check status:**
+```bash
+railway status
+```
+
+**Re-link project:**
+```bash
+railway link 2ed7d840-58c5-4ac6-aed3-7985afb09bc6
+```
+
+**Rollback deployment:**
+1. Go to: https://railway.com/project/2ed7d840-58c5-4ac6-aed3-7985afb09bc6
+2. Navigate to Deployments
+3. Select a previous deployment and click "Redeploy"
+
+---
+
+## Docker Deployment (Alternative)
+
+### Prerequisites
 
 - Docker and Docker Compose installed
 - Domain names configured:
