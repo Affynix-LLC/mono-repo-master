@@ -33,22 +33,24 @@ export const setupWebSocket = (server) => {
     console.log(`[WebSocket] Client connected to conversation: ${conversationId}`);
 
     // Send initial conversation state
-    const conversation = dbHelpers.getConversation(conversationId);
-    if (conversation) {
-      const messages = dbHelpers.getMessagesByConversation(conversationId);
-      ws.send(JSON.stringify({
-        type: 'conversation_state',
-        conversation: {
-          ...conversation,
-          messages: messages.map(msg => ({
-            role: msg.role,
-            content: msg.content,
-            id: msg.id,
-            timestamp: msg.created_at
-          }))
-        }
-      }));
-    }
+    (async () => {
+      const conversation = await dbHelpers.getConversation(conversationId);
+      if (conversation) {
+        const messages = await dbHelpers.getMessagesByConversation(conversationId);
+        ws.send(JSON.stringify({
+          type: 'conversation_state',
+          conversation: {
+            ...conversation,
+            messages: messages.map(msg => ({
+              role: msg.role,
+              content: msg.content,
+              id: msg.id,
+              timestamp: msg.created_at
+            }))
+          }
+        }));
+      }
+    })();
 
     // Handle incoming messages
     ws.on('message', async (data) => {
@@ -67,11 +69,11 @@ export const setupWebSocket = (server) => {
           let existingMessage = null;
 
           if (providedMessageId) {
-            existingMessage = dbHelpers.getMessageById(providedMessageId);
+            existingMessage = await dbHelpers.getMessageById(providedMessageId);
           }
 
           if (!existingMessage) {
-            dbHelpers.createMessage({
+            await dbHelpers.createMessage({
               id: messageId,
               conversation_id: conversationId,
               role,
@@ -93,7 +95,7 @@ export const setupWebSocket = (server) => {
           });
 
           // Get agent name from conversation metadata
-          const conv = dbHelpers.getConversation(conversationId);
+          const conv = await dbHelpers.getConversation(conversationId);
           const agentName = conv?.agent_name || 'agent_zero';
           const systemPrompt = conv?.metadata?.system_prompt || 
                               'You are a helpful AI assistant for Affynix.';
@@ -130,7 +132,7 @@ export const setupWebSocket = (server) => {
             }
 
             // Save complete assistant message
-            dbHelpers.createMessage({
+            await dbHelpers.createMessage({
               id: assistantMessageId,
               conversation_id: conversationId,
               role: 'assistant',

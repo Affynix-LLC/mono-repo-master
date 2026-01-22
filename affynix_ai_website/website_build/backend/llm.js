@@ -11,7 +11,7 @@ const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
 // Get conversation history from database
 export const getConversationHistory = async (conversationId, dbHelpers) => {
-  const messages = dbHelpers.getMessagesByConversation(conversationId);
+  const messages = await dbHelpers.getMessagesByConversation(conversationId);
   return messages.map(msg => ({
     role: msg.role,
     content: msg.content

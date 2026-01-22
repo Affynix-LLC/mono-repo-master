@@ -1,0 +1,8 @@
+{
+  "github_owner": "YOUR_GITHUB_USERNAME_OR_ORG",
+  "default_branch": "main",
+  "base_tld": "affynix",
+  "id_sld": "id",
+  "github_token_env": "GITHUB_TOKEN",
+  "repo_name_pattern": "{username}-id-affynix-site"
+}

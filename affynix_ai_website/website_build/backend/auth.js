@@ -75,7 +75,7 @@ export const optionalAuth = (req, res, next) => {
 // Register user
 export const register = async (email, password, fullName = null, role = 'user') => {
   // Check if user exists
-  const existing = dbHelpers.getUserByEmail(email);
+  const existing = await dbHelpers.getUserByEmail(email);
   if (existing) {
     throw new Error('User already exists');
   }
@@ -83,7 +83,7 @@ export const register = async (email, password, fullName = null, role = 'user') 
   const passwordHash = await hashPassword(password);
   const id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
-  dbHelpers.createUser({
+  await dbHelpers.createUser({
     id,
     email,
     password_hash: passwordHash,
@@ -91,7 +91,7 @@ export const register = async (email, password, fullName = null, role = 'user') 
     full_name: fullName
   });
 
-  const user = dbHelpers.getUserById(id);
+  const user = await dbHelpers.getUserById(id);
   const token = generateToken(user);
 
   return { user, token };
@@ -99,7 +99,7 @@ export const register = async (email, password, fullName = null, role = 'user') 
 
 // Login user
 export const login = async (email, password) => {
-  const user = dbHelpers.getUserByEmail(email);
+  const user = await dbHelpers.getUserByEmail(email);
   
   if (!user) {
     throw new Error('Invalid credentials');

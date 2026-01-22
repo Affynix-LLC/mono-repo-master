@@ -10,7 +10,7 @@
  *   VERCEL_TOKEN=xxx node scripts/set-vercel-env.js DATABASE_URL "postgresql://..."
  */
 
-const https = require('https');
+import https from 'node:https';
 
 const VERCEL_TOKEN = process.env.VERCEL_TOKEN || process.env.VERCEL_API_TOKEN;
 const VERCEL_TEAM_ID = process.env.VERCEL_TEAM_ID || 'team_ffSkbObQFzckEPWZSlpzwGMq';
@@ -32,8 +32,8 @@ if (!VERCEL_TOKEN) {
   process.exit(1);
 }
 
-// Vercel API endpoint
-const url = `https://api.vercel.com/v10/projects/${PROJECT_ID}/env?upsert=true`;
+// Vercel API endpoint (teamId is required for team-owned projects)
+const url = `https://api.vercel.com/v10/projects/${PROJECT_ID}/env?upsert=true&teamId=${VERCEL_TEAM_ID}`;
 
 const data = JSON.stringify({
   key,
@@ -47,7 +47,7 @@ const options = {
   headers: {
     'Authorization': `Bearer ${VERCEL_TOKEN}`,
     'Content-Type': 'application/json',
-    'Content-Length': data.length
+    'Content-Length': Buffer.byteLength(data, 'utf8')
   }
 };
 

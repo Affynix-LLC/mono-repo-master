@@ -4,7 +4,6 @@
  * API endpoints for the Affynix Perpetual Automation System
  */
 
-import { NextRequest, NextResponse } from 'next/server';
 import {
   createOrchestrator,
   defaultConfig,
@@ -67,7 +66,7 @@ async function getOrchestrator(): Promise<PerpetualAutomationOrchestrator> {
  *
  * Handles various actions for the perpetual automation system
  */
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { action, ...params } = body;
@@ -78,67 +77,81 @@ export async function POST(request: NextRequest) {
       case 'ingest_lead': {
         const { sourceType, data } = params;
         const result = await orch.ingestLead(sourceType, data);
-        return NextResponse.json(result);
+        return Response.json(result, {
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
 
       case 'execute_agent01': {
         const { sessionId } = params;
         const result = await orch.executeAgent01Call(sessionId);
-        return NextResponse.json(result);
+        return Response.json(result, {
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
 
       case 'execute_agent02': {
         const { sessionId } = params;
         const result = await orch.executeAgent02Call(sessionId);
-        return NextResponse.json(result);
+        return Response.json(result, {
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
 
       case 'get_metrics': {
         const metrics = orch.getMetrics();
-        return NextResponse.json({ success: true, metrics });
+        return Response.json({ success: true, metrics }, {
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
 
       case 'get_lead': {
         const { leadId } = params;
         const lead = orch.getLead(leadId);
         if (!lead) {
-          return NextResponse.json(
+          return Response.json(
             { success: false, error: 'Lead not found' },
-            { status: 404 }
+            { status: 404, headers: { 'Content-Type': 'application/json' } }
           );
         }
-        return NextResponse.json({ success: true, lead });
+        return Response.json({ success: true, lead }, {
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
 
       case 'get_session': {
         const { sessionId } = params;
         const session = orch.getSession(sessionId);
         if (!session) {
-          return NextResponse.json(
+          return Response.json(
             { success: false, error: 'Session not found' },
-            { status: 404 }
+            { status: 404, headers: { 'Content-Type': 'application/json' } }
           );
         }
-        return NextResponse.json({ success: true, session });
+        return Response.json({ success: true, session }, {
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
 
       case 'get_audit_logs': {
         const { entityId, eventType, correlationId } = params;
         const logs = orch.getAuditLogs({ entityId, eventType, correlationId });
-        return NextResponse.json({ success: true, logs });
+        return Response.json({ success: true, logs }, {
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
 
       default:
-        return NextResponse.json(
+        return Response.json(
           { success: false, error: `Unknown action: ${action}` },
-          { status: 400 }
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
         );
     }
   } catch (error: any) {
     console.error('Perpetual automation API error:', error);
-    return NextResponse.json(
+    return Response.json(
       { success: false, error: error.message || 'Internal server error' },
-      { status: 500 }
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
@@ -148,7 +161,7 @@ export async function POST(request: NextRequest) {
  *
  * Get system status and metrics
  */
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
@@ -157,19 +170,23 @@ export async function GET(request: NextRequest) {
 
     if (action === 'metrics') {
       const metrics = orch.getMetrics();
-      return NextResponse.json({ success: true, metrics });
+      return Response.json({ success: true, metrics }, {
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     if (action === 'status') {
-      return NextResponse.json({
+      return Response.json({
         success: true,
         status: 'operational',
         timestamp: new Date().toISOString(),
+      }, {
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
     // Default: return system info
-    return NextResponse.json({
+    return Response.json({
       success: true,
       system: 'Affynix Perpetual Automation',
       version: '1.0.0',
@@ -180,12 +197,14 @@ export async function GET(request: NextRequest) {
         get_metrics: 'GET /api/perpetual-automation?action=metrics',
         get_status: 'GET /api/perpetual-automation?action=status',
       },
+    }, {
+      headers: { 'Content-Type': 'application/json' },
     });
   } catch (error: any) {
     console.error('Perpetual automation API error:', error);
-    return NextResponse.json(
+    return Response.json(
       { success: false, error: error.message || 'Internal server error' },
-      { status: 500 }
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }

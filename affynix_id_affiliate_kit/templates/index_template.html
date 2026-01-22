@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{HEADLINE}}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Affynix affiliate microsite for {{USERNAME}}." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="brand-pill">Affynix · ID Affiliate</div>
+      <h1>{{HEADLINE}}</h1>
+      <p class="subtitle">
+        Curated by <span class="username">{{USERNAME}}</span> · Powered by Affynix.
+      </p>
+      <a class="primary-cta" href="{{PRIMARY_OFFER_URL}}?aff_id={{AFFILIATE_ID}}" target="_blank" rel="noopener noreferrer">
+        {{CTA_TEXT}}
+      </a>
+    </header>
+
+    <main class="content">
+      <section class="card">
+        <h2>What You Get</h2>
+        <ul>
+          <li>Battle-tested AI tools and automations.</li>
+          <li>Direct links to the exact stack {{USERNAME}} uses.</li>
+          <li>Ongoing updates routed through Affynix.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>How It Works</h2>
+        <ol>
+          <li>Click the button above to open the main offer.</li>
+          <li>Follow the onboarding instructions.</li>
+          <li>Lock in your account using {{AFFILIATE_ID}} as your referral code (if prompted).</li>
+        </ol>
+      </section>
+
+      <section class="card meta">
+        <h3>Affiliate Info</h3>
+        <p><strong>Affiliate ID:</strong> {{AFFILIATE_ID}}</p>
+        <p><strong>Primary Offer:</strong> <a href="{{PRIMARY_OFFER_URL}}" target="_blank" rel="noopener noreferrer">{{PRIMARY_OFFER_URL}}</a></p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Affynix · ID Network · Served via GitHub Pages · {{USERNAME}}.id.affynix</p>
+    </footer>
+  </div>
+</body>
+</html>

@@ -101,9 +101,9 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.get('/api/auth/me', optionalAuth, (req, res) => {
+app.get('/api/auth/me', optionalAuth, async (req, res) => {
   if (req.user) {
-    const user = dbHelpers.getUserById(req.user.id);
+    const user = await dbHelpers.getUserById(req.user.id);
     if (user) {
       const { password_hash, ...userWithoutPassword } = user;
       return res.json(userWithoutPassword);
@@ -123,7 +123,7 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // Conversation endpoints
-app.post('/api/conversations', optionalAuth, (req, res) => {
+app.post('/api/conversations', optionalAuth, async (req, res) => {
   try {
     const { agent_name, metadata } = req.body;
     if (!agent_name) {
@@ -133,14 +133,14 @@ app.post('/api/conversations', optionalAuth, (req, res) => {
     const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const userId = req.user?.id || null;
 
-    dbHelpers.createConversation({
+    await dbHelpers.createConversation({
       id: conversationId,
       user_id: userId,
       agent_name,
       metadata: metadata || {}
     });
 
-    const conversation = dbHelpers.getConversation(conversationId);
+    const conversation = await dbHelpers.getConversation(conversationId);
     res.json({
       ...conversation,
       messages: []
@@ -150,14 +150,14 @@ app.post('/api/conversations', optionalAuth, (req, res) => {
   }
 });
 
-app.get('/api/conversations/:id', optionalAuth, (req, res) => {
+app.get('/api/conversations/:id', optionalAuth, async (req, res) => {
   try {
-    const conversation = dbHelpers.getConversation(req.params.id);
+    const conversation = await dbHelpers.getConversation(req.params.id);
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
-    const messages = dbHelpers.getMessagesByConversation(req.params.id);
+    const messages = await dbHelpers.getMessagesByConversation(req.params.id);
     res.json({
       ...conversation,
       messages: messages.map(msg => ({
@@ -180,7 +180,7 @@ app.post('/api/conversations/:id/messages', optionalAuth, async (req, res) => {
     }
 
     const conversationId = req.params.id;
-    const conversation = dbHelpers.getConversation(conversationId);
+    const conversation = await dbHelpers.getConversation(conversationId);
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
     }
@@ -188,7 +188,7 @@ app.post('/api/conversations/:id/messages', optionalAuth, async (req, res) => {
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const timestamp = new Date().toISOString();
 
-    dbHelpers.createMessage({
+    await dbHelpers.createMessage({
       id: messageId,
       conversation_id: conversationId,
       role,
@@ -205,7 +205,7 @@ app.post('/api/conversations/:id/messages', optionalAuth, async (req, res) => {
     res.json(responseMessage);
 
     if (role === 'user') {
-      const messages = dbHelpers.getMessagesByConversation(conversationId);
+      const messages = await dbHelpers.getMessagesByConversation(conversationId);
       sendAgentConversationUpdate({
         conversation,
         messages,
@@ -222,9 +222,9 @@ const createEntityRoutes = (entityName) => {
   const tableName = entityTableMap[entityName] || entityName.toLowerCase();
   
   // List entities
-  app.get(`/api/entities/${entityName}`, optionalAuth, (req, res) => {
+  app.get(`/api/entities/${entityName}`, optionalAuth, async (req, res) => {
     try {
-      let results = dbHelpers.getAll(tableName);
+      let results = await dbHelpers.getAll(tableName);
       
       // Sort implementation
       const sort = req.query.sort || '';
@@ -250,10 +250,10 @@ const createEntityRoutes = (entityName) => {
   });
 
   // Filter entities
-  app.post(`/api/entities/${entityName}/filter`, optionalAuth, (req, res) => {
+  app.post(`/api/entities/${entityName}/filter`, optionalAuth, async (req, res) => {
     try {
       const filters = req.body || {};
-      const results = dbHelpers.filter(tableName, filters);
+      const results = await dbHelpers.filter(tableName, filters);
       res.json(results);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -261,9 +261,9 @@ const createEntityRoutes = (entityName) => {
   });
 
   // Create entity
-  app.post(`/api/entities/${entityName}`, optionalAuth, (req, res) => {
+  app.post(`/api/entities/${entityName}`, optionalAuth, async (req, res) => {
     try {
-      const newItem = dbHelpers.create(tableName, req.body);
+      const newItem = await dbHelpers.create(tableName, req.body);
       res.json(newItem);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -271,9 +271,9 @@ const createEntityRoutes = (entityName) => {
   });
 
   // Update entity
-  app.put(`/api/entities/${entityName}/:id`, optionalAuth, (req, res) => {
+  app.put(`/api/entities/${entityName}/:id`, optionalAuth, async (req, res) => {
     try {
-      const updated = dbHelpers.update(tableName, req.params.id, req.body);
+      const updated = await dbHelpers.update(tableName, req.params.id, req.body);
       if (!updated) {
         return res.status(404).json({ error: 'Not found' });
       }
@@ -284,10 +284,10 @@ const createEntityRoutes = (entityName) => {
   });
 
   // Delete entity
-  app.delete(`/api/entities/${entityName}/:id`, optionalAuth, (req, res) => {
+  app.delete(`/api/entities/${entityName}/:id`, optionalAuth, async (req, res) => {
     try {
-      const result = dbHelpers.delete(tableName, req.params.id);
-      if (result.changes === 0) {
+      const result = await dbHelpers.delete(tableName, req.params.id);
+      if (!result) {
         return res.status(404).json({ error: 'Not found' });
       }
       res.json({ success: true });
@@ -530,7 +530,7 @@ app.post('/api/contact', async (req, res) => {
     };
 
     // Save to database using existing dbHelpers
-    const savedIntake = dbHelpers.create('intake_submissions', intakeData);
+    const savedIntake = await dbHelpers.create('intake_submissions', intakeData);
     
     if (!savedIntake) {
       throw new Error('Failed to save contact submission to database');
