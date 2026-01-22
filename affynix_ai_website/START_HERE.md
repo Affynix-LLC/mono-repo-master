@@ -78,7 +78,8 @@ After running the script:
 
 Make sure you have:
 
-- [ ] Node.js 18+ installed (`node --version`)
+- [ ] Node.js 24.x installed (`node --version` should show v24.x)
+  - If you have an older version, update: https://nodejs.org
 - [ ] Railway account (free tier works) - https://railway.app
 - [ ] Vercel account (free tier works) - https://vercel.com
 - [ ] OpenAI API key (optional) - https://platform.openai.com
