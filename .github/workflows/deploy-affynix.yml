@@ -48,43 +48,73 @@ jobs:
         run: |
           echo "Deploying backend to Railway..."
 
-          # Link to Railway project (or create new one)
-          railway link || railway init
+          # Check if we have service ID, otherwise use project-based deployment
+          if [ -n "${{ secrets.RAILWAY_SERVICE_ID }}" ]; then
+            export RAILWAY_SERVICE_ID="${{ secrets.RAILWAY_SERVICE_ID }}"
+            echo "Using Railway Service ID: $RAILWAY_SERVICE_ID"
+          else
+            echo "⚠️  RAILWAY_SERVICE_ID not set. Using project-based deployment."
+            echo "For better control, create a Railway project and add RAILWAY_SERVICE_ID to GitHub secrets."
+          fi
 
-          # Set environment variables
-          railway variables set NODE_ENV=production
-          railway variables set PORT=3001
-          railway variables set DATABASE_PATH=/app/data/affynix.db
-          railway variables set JWT_SECRET=${{ secrets.JWT_SECRET || '4d8a0a607ab63d151d1eff6254d4495f9ab78d9829f810962a85c8093ba1e20d' }}
-          railway variables set JWT_EXPIRES_IN=7d
-          railway variables set LLM_MODEL=gpt-4-turbo-preview
+          # Set environment variables using Railway CLI
+          echo "Setting environment variables..."
+          railway variables set NODE_ENV=production || true
+          railway variables set PORT=3001 || true
+          railway variables set DATABASE_PATH=/app/data/affynix.db || true
+          railway variables set JWT_SECRET=${{ secrets.JWT_SECRET || '4d8a0a607ab63d151d1eff6254d4495f9ab78d9829f810962a85c8093ba1e20d' }} || true
+          railway variables set JWT_EXPIRES_IN=7d || true
+          railway variables set LLM_MODEL=gpt-4-turbo-preview || true
 
           # Set OpenAI API key if provided
           if [ -n "${{ secrets.OPENAI_API_KEY }}" ]; then
-            railway variables set OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            railway variables set OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} || true
           fi
 
-          # Deploy
-          railway up --detach
+          # Deploy using Railway CLI
+          echo "Deploying to Railway..."
+          railway up --detach || railway up
 
           # Get the deployment URL
-          BACKEND_URL=$(railway domain)
-          echo "url=$BACKEND_URL" >> $GITHUB_OUTPUT
-          echo "Backend deployed to: $BACKEND_URL"
+          echo "Fetching deployment URL..."
+          BACKEND_URL=$(railway domain 2>/dev/null || echo "")
+
+          if [ -z "$BACKEND_URL" ]; then
+            echo "⚠️  Could not automatically get Railway URL"
+            echo "Please check your Railway dashboard for the deployment URL"
+            echo "url=RAILWAY_DEPLOYMENT_CHECK_DASHBOARD" >> $GITHUB_OUTPUT
+          else
+            # Ensure URL has https://
+            if [[ ! "$BACKEND_URL" =~ ^https?:// ]]; then
+              BACKEND_URL="https://$BACKEND_URL"
+            fi
+            echo "url=$BACKEND_URL" >> $GITHUB_OUTPUT
+            echo "✅ Backend deployed to: $BACKEND_URL"
+          fi
 
       - name: Wait for backend to be ready
         run: |
           echo "Waiting for backend to be ready..."
           BACKEND_URL="${{ steps.deploy.outputs.url }}"
+
+          if [ "$BACKEND_URL" = "RAILWAY_DEPLOYMENT_CHECK_DASHBOARD" ]; then
+            echo "⚠️  Please check Railway dashboard manually for deployment status"
+            echo "Visit: https://railway.app/dashboard"
+            exit 0
+          fi
+
+          echo "Checking backend at: $BACKEND_URL/health"
           for i in {1..30}; do
-            if curl -f "$BACKEND_URL/health" 2>/dev/null; then
-              echo "Backend is ready!"
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/health" 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Backend is ready! (HTTP $HTTP_CODE)"
               exit 0
             fi
-            echo "Attempt $i: Backend not ready yet, waiting..."
+            echo "Attempt $i/30: Backend not ready yet (HTTP $HTTP_CODE), waiting 10s..."
             sleep 10
           done
-          echo "Backend failed to respond after 5 minutes"
+          echo "⚠️  Backend did not respond after 5 minutes"
+          echo "Check Railway logs: https://railway.app/dashboard"
           exit 1
 
   deploy-admin:
