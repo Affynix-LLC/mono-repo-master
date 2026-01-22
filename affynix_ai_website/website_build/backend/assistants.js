@@ -17,10 +17,6 @@ export const createThreadWithBootstrap = async (assistantId) => {
     throw new Error('OpenAI API key not configured');
   }
 
-  // #region debug log
-  fetch('http://127.0.0.1:7242/ingest/01dcf78c-1f67-4043-ae7d-49cff2e31084',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'assistants.js:15',message:'createThreadWithBootstrap called with assistant ID',data:{assistantId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-  // #endregion
-
   console.log('[Assistants] Creating thread with bootstrap for assistant:', assistantId);
 
   // Create an EMPTY thread - the assistant's system prompt says:
@@ -35,58 +31,6 @@ export const createThreadWithBootstrap = async (assistantId) => {
   const run = await openai.beta.threads.runs.create(thread.id, {
     assistant_id: assistantId
   });
-
-  // #region debug log - verify assistant details
-  try {
-    const assistant = await openai.beta.assistants.retrieve(assistantId);
-    const systemPromptPreview = assistant.instructions?.substring(0, 500) || 'NO INSTRUCTIONS';
-    const fullInstructions = assistant.instructions || 'NO INSTRUCTIONS';
-    // Also check if opening_greeting is in the prompt
-    const hasOpeningGreeting = assistant.instructions?.includes('opening_greeting') || false;
-    const hasAffynixGreeting = assistant.instructions?.includes('Hello, thank you for contacting Affynix') || false;
-    const containsHowCanIAssist = assistant.instructions?.includes('How can I assist') || false;
-    
-    const debugInfo = {
-      location: 'assistants.js:35',
-      message: 'Assistant retrieved - verifying system prompt',
-      data: {
-        assistantId: assistant.id,
-        assistantName: assistant.name,
-        hasInstructions: !!assistant.instructions,
-        instructionsLength: assistant.instructions?.length || 0,
-        systemPromptPreview: systemPromptPreview,
-        hasOpeningGreeting,
-        hasAffynixGreeting,
-        containsHowCanIAssist,
-        fullInstructions: fullInstructions // Include full instructions for analysis
-      },
-      timestamp: Date.now(),
-      sessionId: 'debug-session',
-      runId: 'run1',
-      hypothesisId: 'F'
-    };
-    
-    console.log('[DEBUG] Assistant retrieved:', debugInfo.data);
-    console.log('[DEBUG] Full system prompt:', fullInstructions);
-    // Write to debug log file directly
-    try {
-      const fs = await import('fs');
-      const logPath = '/Users/13omb3r/Dev/affynix-mono-repo/.cursor/debug.log';
-      fs.appendFileSync(logPath, JSON.stringify(debugInfo) + '\n');
-      console.log('[DEBUG] Log written to file successfully');
-    } catch (fileErr) {
-      console.error('[DEBUG] Failed to write log file:', fileErr.message);
-    }
-    fetch('http://127.0.0.1:7242/ingest/01dcf78c-1f67-4043-ae7d-49cff2e31084',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(debugInfo)}).catch(()=>{});
-  } catch (err) {
-    console.error('[DEBUG] Failed to retrieve assistant:', err.message);
-    const errorInfo = {location:'assistants.js:35',message:'Failed to retrieve assistant',data:{assistantId,error:err.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'};
-    const fs = await import('fs');
-    const logPath = '/Users/13omb3r/Dev/affynix-mono-repo/.cursor/debug.log';
-    fs.appendFileSync(logPath, JSON.stringify(errorInfo) + '\n');
-    fetch('http://127.0.0.1:7242/ingest/01dcf78c-1f67-4043-ae7d-49cff2e31084',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(errorInfo)}).catch(()=>{});
-  }
-  // #endregion
 
   console.log('[Assistants] Run created:', run.id, 'Status:', run.status);
 
