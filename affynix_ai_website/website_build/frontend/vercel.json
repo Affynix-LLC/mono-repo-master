@@ -11,6 +11,6 @@
     }
   ],
   "env": {
-    "VITE_API_URL": "https://api.affynix.ai"
+    "VITE_API_URL": "https://affynix-backend-production.up.railway.app"
   }
 }
