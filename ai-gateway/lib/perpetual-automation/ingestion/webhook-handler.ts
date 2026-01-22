@@ -246,7 +246,7 @@ export class WebhookIngestionHandler extends BaseIngestionHandler {
       return data.name;
     }
 
-    const parts = [];
+    const parts: string[] = [];
     if (data.firstName) parts.push(data.firstName);
     if (data.lastName) parts.push(data.lastName);
 

@@ -3,6 +3,7 @@ export type WorkflowStepStatus = 'pending' | 'running' | 'completed' | 'failed' 
 export interface WorkflowStep {
   id: string;
   name: string;
+  description?: string;
   type: 'prompt' | 'tool' | 'webhook' | 'workflow';
   config: any;
   dependsOn?: string[]; // IDs of steps that must complete before this step
@@ -15,6 +16,7 @@ export interface WorkflowStep {
 export interface Workflow {
   id: string;
   name: string;
+  version?: string;
   description?: string;
   steps: WorkflowStep[];
   enabled: boolean;

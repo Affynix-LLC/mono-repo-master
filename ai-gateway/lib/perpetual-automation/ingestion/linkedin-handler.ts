@@ -168,7 +168,7 @@ export class LinkedInIngestionHandler extends BaseIngestionHandler {
   }
 
   private extractName(data: LinkedInData): string {
-    const parts = [];
+    const parts: string[] = [];
     if (data.firstName) parts.push(data.firstName);
     if (data.lastName) parts.push(data.lastName);
 

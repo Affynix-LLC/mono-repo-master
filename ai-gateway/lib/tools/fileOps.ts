@@ -1,9 +1,9 @@
-import { readFile, writeFile, readdir } from 'fs/promises';
+import { readFile as fsReadFile, writeFile as fsWriteFile, readdir } from 'fs/promises';
 import { join } from 'path';
 
 export async function readFile(args: { path: string }) {
   try {
-    const content = await readFile(args.path, 'utf-8');
+    const content = await fsReadFile(args.path, 'utf-8');
     return { content, path: args.path };
   } catch (error: any) {
     throw new Error(`Failed to read file: ${error.message}`);
@@ -12,7 +12,7 @@ export async function readFile(args: { path: string }) {
 
 export async function writeFile(args: { path: string; content: string }) {
   try {
-    await writeFile(args.path, args.content, 'utf-8');
+    await fsWriteFile(args.path, args.content, 'utf-8');
     return { success: true, path: args.path };
   } catch (error: any) {
     throw new Error(`Failed to write file: ${error.message}`);
