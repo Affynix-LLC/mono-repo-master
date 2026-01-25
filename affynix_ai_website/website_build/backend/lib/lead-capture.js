@@ -165,11 +165,11 @@ export const captureLeadFromConversation = async ({ conversationId, dbHelpers })
       captured_at: now
     });
     
-    const updateResult = await dbHelpers.update('conversations', conversationId, {
+    const updateResult = dbHelpers.update('conversations', conversationId, {
       metadata: updatedMetadata
     });
     
-    if (updateResult === false) {
+    if (!updateResult) {
       throw new Error('Failed to update conversation metadata after saving lead to Airtable');
     }
     
@@ -184,7 +184,11 @@ export const captureLeadFromConversation = async ({ conversationId, dbHelpers })
       last_attempt: now
     });
     
-    dbHelpers.update('conversations', conversationId, { metadata: failedMetadata });
+    try {
+      dbHelpers.update('conversations', conversationId, { metadata: failedMetadata });
+    } catch (dbError) {
+      console.error('[Lead Capture] Failed to update error metadata:', dbError);
+    }
     
     throw error;
   }
