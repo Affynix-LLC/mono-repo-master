@@ -13,7 +13,7 @@ on:
         default: 'Admin User'
   push:
     branches:
-      - claude/build-affynix-automation-plvPW
+      - main
     paths:
       - 'affynix_ai_website/**'
       - '.github/workflows/deploy-affynix.yml'
