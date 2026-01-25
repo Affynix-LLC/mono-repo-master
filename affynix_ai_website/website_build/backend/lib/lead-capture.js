@@ -2,6 +2,11 @@ import { saveLeadToAirtable } from './airtable.js';
 
 const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 const PHONE_REGEX = /(\+?\d[\d\s().-]{7,}\d)/;
+// Matches website URLs with word boundaries to prevent false matches:
+// - \b(https?:\/\/[^\s]+) : Full URLs with http/https protocol
+// - \b(?<![.@]) : Word boundary NOT preceded by . or @ (avoids email domains and subdomain fragments)
+// - ([A-Z0-9]([A-Z0-9-]*[A-Z0-9])?\.)+[A-Z]{2,} : Domain with optional hyphens and TLD
+// - \b(\/[^\s]*)? : Optional path after domain with word boundary
 const WEBSITE_REGEX = /\b(https?:\/\/[^\s]+)|\b(?<![.@])([A-Z0-9]([A-Z0-9-]*[A-Z0-9])?\.)+[A-Z]{2,}\b(\/[^\s]*)?/i;
 
 const sanitizeValue = (value) => {
