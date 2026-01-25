@@ -30,10 +30,14 @@ export default function Index() {
         setChatStarted(true);
         try {
             const conv = await api.agents.createConversation({
-                agent_name: "agent_zero",
+                agent_name: "intakeAgent",
                 metadata: {
-                    name: "Agent Zero Session",
-                    assistant_id: "asst_JgICRWsfkVO3ODT8cdSMOqAm"
+                    name: "Intake Agent Session",
+                    source: "affynix.ai /frontend",
+                    prompt: {
+                        id: "pmpt_697698bb3df08195b295e1a4009cbfab0a9b742494ff272d",
+                        version: "1"
+                    }
                 }
             });
             

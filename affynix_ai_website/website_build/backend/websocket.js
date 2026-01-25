@@ -1,6 +1,7 @@
 import { WebSocketServer } from 'ws';
 import { dbHelpers } from './db.js';
 import { invokeLLM } from './llm.js';
+import { captureLeadFromConversation } from './lib/lead-capture.js';
 
 // Store active WebSocket connections by conversation ID
 const connections = new Map();
@@ -77,6 +78,10 @@ export const setupWebSocket = (server) => {
               role,
               content
             });
+
+            captureLeadFromConversation({ conversationId, dbHelpers }).catch((error) => {
+              console.error('[Lead Capture] Failed to capture lead:', error);
+            });
           }
 
           const timestamp = existingMessage?.created_at || new Date().toISOString();
@@ -95,6 +100,9 @@ export const setupWebSocket = (server) => {
           // Get agent name from conversation metadata
           const conv = dbHelpers.getConversation(conversationId);
           const agentName = conv?.agent_name || 'agent_zero';
+          const promptId = conv?.metadata?.prompt?.id ||
+            process.env.AFFYNIX_AGENT_PROMPT_ID ||
+            'pmpt_697698bb3df08195b295e1a4009cbfab0a9b742494ff272d';
           const systemPrompt = conv?.metadata?.system_prompt || 
                               'You are a helpful AI assistant for Affynix.';
 
@@ -103,6 +111,7 @@ export const setupWebSocket = (server) => {
             const stream = await invokeLLM(content, {
               conversationId,
               systemPrompt,
+              promptId,
               stream: true,
               dbHelpers
             });

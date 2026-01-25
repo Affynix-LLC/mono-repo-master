@@ -11,6 +11,7 @@ import Airtable from 'airtable';
 const personalAccessToken = process.env.AIRTABLE_API_KEY; // This is actually a PAT
 const baseId = process.env.AIRTABLE_BASE_ID;
 const tableName = process.env.AIRTABLE_TABLE_OFFERS || 'Offers';
+const leadTableName = process.env.AIRTABLE_TABLE_LEADS || 'Contacts';
 
 let base = null;
 if (personalAccessToken && baseId) {
@@ -88,3 +89,86 @@ export async function saveOfferToAirtable(offer) {
   }
 }
 
+const escapeFormulaValue = (value) => String(value || '').replace(/"/g, '\\"');
+
+function mapLeadToRecord(lead) {
+  const signUpDate = lead.submittedAt ? lead.submittedAt.split('T')[0] : new Date().toISOString().split('T')[0];
+  return {
+    'First Name': lead.firstName || 'Unknown',
+    'Last Name': lead.lastName || '',
+    Email: lead.email || '',
+    Phone: lead.phone || '',
+    Business: lead.business || '',
+    Website: lead.website || '',
+    'Role / Title': lead.role || '',
+    'Lead Source': lead.source || 'Website',
+    Status: lead.status || 'New - Intake',
+    Priority: lead.priority || 'High',
+    'Client Type': lead.clientType || 'Business',
+    'Sign-Up Date': lead.signUpDate || signUpDate,
+    Notes: lead.notes || '',
+    ConversationId: lead.conversationId || '',
+    Transcript: lead.transcript || '',
+    SubmittedAt: lead.submittedAt || new Date().toISOString(),
+    PathType: lead.pathType || ''
+  };
+}
+
+async function findExistingLead(lead) {
+  if (!base) return null;
+
+  const filters = [];
+  if (lead.email) {
+    filters.push(`{Email} = "${escapeFormulaValue(lead.email)}"`);
+  }
+  if (lead.phone) {
+    filters.push(`{Phone} = "${escapeFormulaValue(lead.phone)}"`);
+  }
+  if (lead.conversationId) {
+    filters.push(`{ConversationId} = "${escapeFormulaValue(lead.conversationId)}"`);
+  }
+
+  if (filters.length === 0) {
+    return null;
+  }
+
+  const formula = `OR(${filters.join(',')})`;
+
+  try {
+    const found = await base(leadTableName).select({ filterByFormula: formula }).firstPage();
+    if (found.length > 0) return found[0].id;
+    return null;
+  } catch (err) {
+    console.error('[Airtable] findExistingLead() error:', err);
+    return null;
+  }
+}
+
+export async function saveLeadToAirtable(lead) {
+  if (!base) {
+    console.log('[Airtable] Test mode - skipping lead save');
+    return 'test-mode-record-id';
+  }
+
+  if (!lead || !lead.email || !lead.firstName || !lead.business || !lead.website || !lead.phone) {
+    throw new Error('Lead must include first name, email, business, website, and phone');
+  }
+
+  try {
+    const recordData = mapLeadToRecord(lead);
+    const existingId = await findExistingLead(lead);
+
+    if (existingId) {
+      const updated = await base(leadTableName).update(existingId, recordData);
+      console.log(`[Airtable] Updated lead ${existingId}`);
+      return updated.id;
+    }
+
+    const created = await base(leadTableName).create(recordData);
+    console.log(`[Airtable] Created lead ${created.id}`);
+    return created.id;
+  } catch (error) {
+    console.error('[Airtable] saveLeadToAirtable() error:', error);
+    throw new Error('Failed to save lead to Airtable.');
+  }
+}

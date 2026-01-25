@@ -136,4 +136,3 @@ export function registerAllTools(): void {
     toolRegistry.register(tool);
   }
 }
-

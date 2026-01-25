@@ -82,8 +82,6 @@ WEBHOOK_SECRET=your_webhook_secret
 AFFYNIX_API_KEY=your_affynix_api_key
 AFFYNIX_API_BASE=https://affynix.com/api
 CLICKBANK_API_KEY=your_clickbank_key
-AIRTABLE_API_KEY=your_airtable_key
-
 # Domain
 NEXT_PUBLIC_DOMAIN=ai.affynix.ai
 ```
@@ -184,4 +182,3 @@ curl -X POST https://ai.affynix.ai/api/agents \
 ## License
 
 ISC
-

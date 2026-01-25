@@ -27,6 +27,7 @@ export const invokeLLM = async (prompt, options = {}) => {
   const {
     conversationId = null,
     systemPrompt = 'You are a helpful AI assistant.',
+    promptId = null,
     temperature = 0.7,
     maxTokens = 2000,
     stream = false,
@@ -36,8 +37,12 @@ export const invokeLLM = async (prompt, options = {}) => {
   // Build messages array
   const messages = [];
   
+  const resolvedSystemPrompt = promptId
+    ? `${systemPrompt}\n\n[Prompt ID: ${promptId}]`
+    : systemPrompt;
+
   // Add system message
-  messages.push({ role: 'system', content: systemPrompt });
+  messages.push({ role: 'system', content: resolvedSystemPrompt });
 
   // Add conversation history if conversationId provided
   if (conversationId && dbHelpers) {

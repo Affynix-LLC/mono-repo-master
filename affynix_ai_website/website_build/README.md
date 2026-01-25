@@ -61,6 +61,9 @@ Both domains should have SSL certificates configured (Let's Encrypt recommended)
 - `NODE_ENV=production`
 - `OPENAI_API_KEY` - Required. Your OpenAI API key for agent orchestration.
 - `LLM_MODEL` - Optional. Defaults to `gpt-4-turbo-preview`.
+- `AIRTABLE_API_KEY` - Required for CRM sync. Airtable Personal Access Token.
+- `AIRTABLE_BASE_ID` - Required for CRM sync. Airtable base ID.
+- `AIRTABLE_TABLE_LEADS` - Optional. Defaults to `Contacts`.
 - `ZAPIER_AGENT_WEBHOOK_URL` - Optional. If set, every Agent01 conversation update is POSTed to this Zapier hook with the latest user input plus the message history transcript.
 - `VITE_CONTACT_WEBHOOK_URL` - Optional. If set, the Contact page submits directly to this Zapier hook (e.g., to drive an Airtable Zap).
 
