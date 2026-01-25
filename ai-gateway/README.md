@@ -32,7 +32,6 @@ Full-featured AI automation platform deployed at `ai.affynix.ai` with agent capa
 - HTTP client (GET, POST)
 - Data processing (transform, aggregate)
 - Content generation
-- Airtable record creation
 - Affynix platform integration
 
 ## API Endpoints
@@ -83,10 +82,6 @@ WEBHOOK_SECRET=your_webhook_secret
 AFFYNIX_API_KEY=your_affynix_api_key
 AFFYNIX_API_BASE=https://affynix.com/api
 CLICKBANK_API_KEY=your_clickbank_key
-AIRTABLE_API_KEY=your_airtable_key
-AIRTABLE_BASE_ID=your_airtable_base_id
-AIRTABLE_TABLE_NAME=your_airtable_table_name
-
 # Domain
 NEXT_PUBLIC_DOMAIN=ai.affynix.ai
 ```
