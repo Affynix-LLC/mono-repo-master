@@ -4,9 +4,11 @@ Central hub for Affynix LLC infrastructure and services.
 
 ## Projects
 
-- **0xVoice** - AI voice synthesis and processing
-- **0xAPI** - Protocol automation and API layer
-- **Pornstar.ai** - Specialized media platform
+This monorepo contains three major applications:
+
+- **affynix_ai_website/** - Vite+React frontend, Express.js backend, admin (Next.js)
+- **affynix_com_website/affynix-platform/** - Next.js 14 multi-subdomain SaaS, SEO/analytics, modal funnels  
+- **affynix-harvester/** - Playwright-based scraper, Express intake API, multi-tenant provisioning
 
 ## Getting Started
 
