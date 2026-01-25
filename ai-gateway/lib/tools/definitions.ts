@@ -5,6 +5,7 @@ import * as fileOps from './fileOps';
 import * as httpTools from './http';
 import * as dataTools from './data';
 import * as contentTools from './content';
+import { createAirtableRecord } from './airtable';
 import { affynixProductTools } from './affynix/products';
 import { affynixContentTools } from './affynix/content';
 import { affynixAnalyticsTools } from './affynix/analytics';
@@ -110,6 +111,19 @@ export function registerAllTools(): void {
     execute: contentTools.generateSeoContent,
   });
 
+  // Airtable
+  toolRegistry.register({
+    name: 'create_airtable_record',
+    description: 'Create a record in Airtable using configured credentials',
+    parameters: z.object({
+      baseId: z.string().optional().describe('Airtable base ID (defaults to AIRTABLE_BASE_ID)'),
+      table: z.string().optional().describe('Airtable table name (defaults to AIRTABLE_TABLE_NAME)'),
+      fields: z.record(z.any()).describe('Record fields to write to Airtable'),
+      typecast: z.boolean().optional().describe('Enable Airtable typecast (default true)'),
+    }),
+    execute: createAirtableRecord,
+  });
+
   // Affynix Platform Tools
   for (const tool of affynixProductTools) {
     toolRegistry.register(tool);
@@ -136,4 +150,3 @@ export function registerAllTools(): void {
     toolRegistry.register(tool);
   }
 }
-

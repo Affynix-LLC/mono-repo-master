@@ -7,6 +7,7 @@ import { invokeLLM, simpleLLMCall } from './llm.js';
 import { setupWebSocket } from './websocket.js';
 import { sendAgentConversationUpdate } from './zapier.js';
 import { saveOfferToAirtable } from './lib/airtable.js';
+import { captureLeadFromConversation } from './lib/lead-capture.js';
 import { ensureSubdomainForCategory } from './lib/cloudflare.js';
 import { bindSubdomainToVercel } from './lib/vercel.js';
 import { classifyCategoryToSubdomain } from './utils/subdomainRouter.js';
@@ -210,6 +211,10 @@ app.post('/api/conversations/:id/messages', optionalAuth, async (req, res) => {
         conversation,
         messages,
         latestMessage: responseMessage
+      });
+
+      captureLeadFromConversation({ conversationId, dbHelpers }).catch((error) => {
+        console.error('[Lead Capture] Failed to capture lead:', error);
       });
     }
   } catch (error) {
