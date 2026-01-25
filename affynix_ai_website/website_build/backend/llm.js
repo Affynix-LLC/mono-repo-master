@@ -37,12 +37,16 @@ export const invokeLLM = async (prompt, options = {}) => {
   // Build messages array
   const messages = [];
   
-  const resolvedSystemPrompt = promptId
-    ? `${systemPrompt}\n\n[Prompt ID: ${promptId}]`
-    : systemPrompt;
+  // Note: promptId is used for tracking/logging purposes only.
+  // The systemPrompt parameter already contains the full prompt content.
+  // If prompt templates need to be looked up by ID, implement a separate
+  // prompt resolution service before calling this function.
+  if (promptId) {
+    console.log(`[LLM] Using prompt ID: ${promptId}`);
+  }
 
   // Add system message
-  messages.push({ role: 'system', content: resolvedSystemPrompt });
+  messages.push({ role: 'system', content: systemPrompt });
 
   // Add conversation history if conversationId provided
   if (conversationId && dbHelpers) {
