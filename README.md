@@ -1,4 +1,4 @@
-# Affynix Mono Repo
+# Affynix Monorepo
 
 Central hub for Affynix LLC infrastructure and services.
 
