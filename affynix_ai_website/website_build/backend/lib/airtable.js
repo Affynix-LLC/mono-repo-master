@@ -89,8 +89,25 @@ export async function saveOfferToAirtable(offer) {
   }
 }
 
-const escapeFormulaValue = (value) => String(value || '').replace(/"/g, '\\"');
+const escapeFormulaValue = (value) => {
+  const str = String(value ?? '');
+  return str
+    .replace(/\\/g, '\\\\')    // escape backslashes
+    .replace(/"/g, '\\"')      // escape double quotes
+    .replace(/\r?\n/g, '\\n'); // normalize newlines
+};
 
+/**
+ * Map lead data to Airtable record format.
+ * 
+ * Fallback values:
+ * - First Name defaults to 'Unknown' if not provided
+ * - Sign-Up Date defaults to submittedAt date or current date
+ * - Empty strings for optional fields (Last Name, Phone, Role, Notes)
+ * 
+ * Note: Ensure these fallbacks align with Airtable schema requirements.
+ * Required fields in Airtable Contacts table: First Name, Email
+ */
 function mapLeadToRecord(lead) {
   const signUpDate = lead.submittedAt ? lead.submittedAt.split('T')[0] : new Date().toISOString().split('T')[0];
   return {
@@ -114,6 +131,15 @@ function mapLeadToRecord(lead) {
   };
 }
 
+/**
+ * Find existing lead record in Airtable.
+ * 
+ * Searches by Email, Phone, or ConversationId using OR logic.
+ * 
+ * Note: Formula values are escaped to prevent injection attacks.
+ * The escapeFormulaValue function handles quotes, backslashes, and newlines.
+ * If more complex queries are needed, consider using Airtable SDK's query methods.
+ */
 async function findExistingLead(lead) {
   if (!base) return null;
 

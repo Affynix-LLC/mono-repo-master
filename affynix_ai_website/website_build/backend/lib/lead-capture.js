@@ -1,8 +1,8 @@
 import { saveLeadToAirtable } from './airtable.js';
 
 const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
-const PHONE_REGEX = /(\+?\d[\d\s().-]{7,}\d)/;
-const WEBSITE_REGEX = /(https?:\/\/[^\s]+)|([A-Z0-9.-]+\.[A-Z]{2,})(\/[^\s]*)?/i;
+const PHONE_REGEX = /(\+?\d[\d\s().-]{7,}[\d)])/;
+const WEBSITE_REGEX = /\b(?:https?:\/\/)?(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,}(?:\/[^\s]*)?/i;
 
 const sanitizeValue = (value) => {
   if (!value) return '';
@@ -26,9 +26,9 @@ const splitNameParts = (name) => {
 const extractName = (text) => {
   if (!text) return '';
   const patterns = [
-    /my name is ([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
-    /i am ([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
-    /this is ([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i
+    /my name is ([A-Za-z][A-Za-z''.-]*(?:\s+[A-Za-z][A-Za-z''.-]*)*)/i,
+    /i am ([A-Za-z][A-Za-z''.-]*(?:\s+[A-Za-z][A-Za-z''.-]*)*)/i,
+    /this is ([A-Za-z][A-Za-z''.-]*(?:\s+[A-Za-z][A-Za-z''.-]*)*)/i
   ];
 
   for (const pattern of patterns) {
@@ -99,7 +99,8 @@ export const captureLeadFromConversation = async ({ conversationId, dbHelpers })
   }
 
   const metadata = conversation.metadata || {};
-  if (metadata.lead_capture?.status === 'saved') {
+  // Don't retry if lead was already saved or if a save attempt failed
+  if (metadata.lead_capture?.status === 'saved' || metadata.lead_capture?.status === 'failed') {
     return metadata.lead_capture;
   }
 
@@ -123,6 +124,9 @@ export const captureLeadFromConversation = async ({ conversationId, dbHelpers })
   if (!phone) missingFields.push('phone');
 
   if (missingFields.length > 0) {
+    console.warn(
+      `[Lead Capture] Lead capture skipped for conversation ${conversationId}: missing fields: ${missingFields.join(', ')}`
+    );
     const updatedMetadata = updateLeadMetadata(metadata, 'missing_required_fields', {
       missing_fields: missingFields,
       checked_at: new Date().toISOString()
@@ -147,6 +151,8 @@ export const captureLeadFromConversation = async ({ conversationId, dbHelpers })
     pathType: sanitizeValue(metadata.pathType),
     conversationId,
     transcript: formatTranscript(messages),
+    // Notes field stores truncated transcript for quick reference in Airtable UI
+    // while full transcript is preserved in the Transcript field for complete record
     notes: formatTranscript(messages).slice(0, 2000),
     submittedAt: now
   };
@@ -158,17 +164,28 @@ export const captureLeadFromConversation = async ({ conversationId, dbHelpers })
       airtable_record_id: recordId,
       captured_at: now
     });
-    dbHelpers.update('conversations', conversationId, { metadata: updatedMetadata });
+    
+    const updateResult = await dbHelpers.update('conversations', conversationId, {
+      metadata: updatedMetadata
+    });
+    
+    if (updateResult === false) {
+      throw new Error('Failed to update conversation metadata after saving lead to Airtable');
+    }
+    
     return {
       airtable_record_id: recordId,
       captured_at: now
     };
   } catch (error) {
-    const updatedMetadata = updateLeadMetadata(metadata, 'error', {
-      error_message: error?.message || 'Failed to save lead',
-      failed_at: now
+    const failedMetadata = updateLeadMetadata(metadata, 'failed', {
+      email: leadPayload.email,
+      error: error instanceof Error ? error.message : String(error),
+      last_attempt: now
     });
-    dbHelpers.update('conversations', conversationId, { metadata: updatedMetadata });
+    
+    dbHelpers.update('conversations', conversationId, { metadata: failedMetadata });
+    
     throw error;
   }
 };

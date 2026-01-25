@@ -7,6 +7,7 @@ import SettingsPanel from "../components/SettingsPanel";
 import Logo from "../components/Logo";
 import HeaderBar from "../components/HeaderBar";
 import { api } from "@/api/apiClient";
+import { DEFAULT_PROMPT_ID } from "@/constants/config";
 
 export default function Index() {
     const [messages, setMessages] = useState([]);
@@ -35,7 +36,7 @@ export default function Index() {
                     name: "Intake Agent Session",
                     source: "affynix.ai /frontend",
                     prompt: {
-                        id: "pmpt_697698bb3df08195b295e1a4009cbfab0a9b742494ff272d",
+                        id: DEFAULT_PROMPT_ID,
                         version: "1"
                     }
                 }

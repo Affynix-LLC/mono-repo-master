@@ -37,6 +37,9 @@ export const invokeLLM = async (prompt, options = {}) => {
   // Build messages array
   const messages = [];
   
+  // Append Prompt ID to system prompt for tracking and debugging purposes
+  // Note: This embeds the prompt ID in the LLM context for reference.
+  // If prompt ID resolution to templates is needed, implement that before calling invokeLLM.
   const resolvedSystemPrompt = promptId
     ? `${systemPrompt}\n\n[Prompt ID: ${promptId}]`
     : systemPrompt;

@@ -78,10 +78,6 @@ export const setupWebSocket = (server) => {
               role,
               content
             });
-
-            captureLeadFromConversation({ conversationId, dbHelpers }).catch((error) => {
-              console.error('[Lead Capture] Failed to capture lead:', error);
-            });
           }
 
           const timestamp = existingMessage?.created_at || new Date().toISOString();
@@ -100,9 +96,21 @@ export const setupWebSocket = (server) => {
           // Get agent name from conversation metadata
           const conv = dbHelpers.getConversation(conversationId);
           const agentName = conv?.agent_name || 'agent_zero';
-          const promptId = conv?.metadata?.prompt?.id ||
-            process.env.AFFYNIX_AGENT_PROMPT_ID ||
-            'pmpt_697698bb3df08195b295e1a4009cbfab0a9b742494ff272d';
+          
+          const metadataPromptId = conv?.metadata?.prompt?.id;
+          const envPromptId = process.env.AFFYNIX_AGENT_PROMPT_ID;
+
+          if (!metadataPromptId && !envPromptId) {
+            console.error('[WebSocket] No prompt ID available for conversation:', conversationId);
+            broadcastToConversation(conversationId, {
+              type: 'error',
+              error: 'No prompt ID configured for this conversation. Please set AFFYNIX_AGENT_PROMPT_ID or provide prompt metadata.'
+            });
+            return;
+          }
+
+          const promptId = metadataPromptId || envPromptId;
+          
           const systemPrompt = conv?.metadata?.system_prompt || 
                               'You are a helpful AI assistant for Affynix.';
 
