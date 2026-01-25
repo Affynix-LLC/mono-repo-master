@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { resolvePromptTemplate } from './lib/promptRegistry.js';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const LLM_MODEL = process.env.LLM_MODEL || 'gpt-4-turbo-preview';
@@ -37,8 +38,11 @@ export const invokeLLM = async (prompt, options = {}) => {
   // Build messages array
   const messages = [];
   
+  // Resolve prompt template if promptId is provided
+  // If promptId is given, use the template from the registry
+  // Otherwise, fall back to the provided systemPrompt
   const resolvedSystemPrompt = promptId
-    ? `${systemPrompt}\n\n[Prompt ID: ${promptId}]`
+    ? resolvePromptTemplate(promptId)
     : systemPrompt;
 
   // Add system message
