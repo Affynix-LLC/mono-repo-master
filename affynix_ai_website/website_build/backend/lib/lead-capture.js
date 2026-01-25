@@ -2,7 +2,7 @@ import { saveLeadToAirtable } from './airtable.js';
 
 const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 const PHONE_REGEX = /(\+?\d[\d\s().-]{7,}\d)/;
-const WEBSITE_REGEX = /(https?:\/\/[^\s]+)|([A-Z0-9.-]+\.[A-Z]{2,})(\/[^\s]*)?/i;
+const WEBSITE_REGEX = /\b(https?:\/\/[^\s]+)|\b(?<![.@])([A-Z0-9]([A-Z0-9-]*[A-Z0-9])?\.)+[A-Z]{2,}\b(\/[^\s]*)?/i;
 
 const sanitizeValue = (value) => {
   if (!value) return '';
