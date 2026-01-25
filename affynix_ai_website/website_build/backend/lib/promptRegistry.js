@@ -38,17 +38,17 @@ When you've gathered sufficient information, thank them and let them know the te
 /**
  * Resolve a prompt ID to its system prompt template
  * @param {string} promptId - The prompt ID to resolve
- * @returns {string} The resolved system prompt, or default if not found
+ * @returns {string|null} The resolved system prompt, or null if not found
  */
 export const resolvePromptTemplate = (promptId) => {
   if (!promptId) {
-    return PROMPT_TEMPLATES['pmpt_default'].systemPrompt;
+    return null;
   }
 
   const template = PROMPT_TEMPLATES[promptId];
   if (!template) {
-    console.warn(`⚠️  Prompt ID "${promptId}" not found in registry. Using default.`);
-    return PROMPT_TEMPLATES['pmpt_default'].systemPrompt;
+    console.warn(`⚠️  Prompt ID "${promptId}" not found in registry.`);
+    return null;
   }
 
   return template.systemPrompt;

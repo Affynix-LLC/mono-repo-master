@@ -43,9 +43,26 @@ import { resolvePromptTemplate } from './lib/promptRegistry.js';
 const promptId = 'pmpt_697698bb3df08195b295e1a4009cbfab0a9b742494ff272d';
 const systemPrompt = resolvePromptTemplate(promptId);
 
-// Use it in your LLM call
+// Option A: Use it in your LLM call with promptId (recommended)
 await invokeLLM(userMessage, {
-  promptId,  // The function will resolve this internally
+  promptId,  // The invokeLLM function will resolve this internally
+  stream: true
+});
+
+// Option B: Pre-resolve and pass as systemPrompt
+const template = resolvePromptTemplate(promptId);
+if (template) {
+  await invokeLLM(userMessage, {
+    systemPrompt: template,
+    stream: true
+  });
+}
+
+// Option C: Use promptId with fallback systemPrompt
+// If the promptId is not found, it will use the systemPrompt
+await invokeLLM(userMessage, {
+  promptId,
+  systemPrompt: 'Fallback prompt if ID not found',
   stream: true
 });
 ```
@@ -120,7 +137,7 @@ This prompt guides the AI to:
 
 ## Integration with LLM Module
 
-The `llm.js` module automatically uses the prompt registry:
+The `llm.js` module automatically uses the prompt registry with proper fallback logic:
 
 ```javascript
 // In llm.js
@@ -129,10 +146,17 @@ import { resolvePromptTemplate } from './lib/promptRegistry.js';
 export const invokeLLM = async (prompt, options = {}) => {
   const { promptId, systemPrompt } = options;
   
-  // If promptId is provided, resolve it to the full template
-  const resolvedSystemPrompt = promptId
-    ? resolvePromptTemplate(promptId)
-    : systemPrompt;
+  // Resolution priority:
+  // 1. If promptId is provided and found in registry -> use template
+  // 2. If promptId not found or not provided -> use systemPrompt parameter
+  // 3. If neither provided -> use default 'You are a helpful AI assistant.'
+  let resolvedSystemPrompt = systemPrompt;
+  if (promptId) {
+    const template = resolvePromptTemplate(promptId);
+    if (template) {
+      resolvedSystemPrompt = template;
+    }
+  }
   
   // ... rest of LLM invocation
 };
@@ -178,8 +202,10 @@ Potential improvements to consider:
 ### Warning: Prompt ID not found
 
 ```
-⚠️  Prompt ID "pmpt_xyz" not found in registry. Using default.
+⚠️  Prompt ID "pmpt_xyz" not found in registry.
 ```
+
+**Behavior**: The system will fall back to the `systemPrompt` parameter or default assistant prompt
 
 **Solution**: Add the missing prompt ID to `PROMPT_TEMPLATES` in `promptRegistry.js`
 

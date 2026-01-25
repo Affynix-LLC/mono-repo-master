@@ -39,11 +39,15 @@ export const invokeLLM = async (prompt, options = {}) => {
   const messages = [];
   
   // Resolve prompt template if promptId is provided
-  // If promptId is given, use the template from the registry
-  // Otherwise, fall back to the provided systemPrompt
-  const resolvedSystemPrompt = promptId
-    ? resolvePromptTemplate(promptId)
-    : systemPrompt;
+  // Priority: resolved template > explicitly provided systemPrompt > default
+  let resolvedSystemPrompt = systemPrompt;
+  if (promptId) {
+    const template = resolvePromptTemplate(promptId);
+    if (template) {
+      resolvedSystemPrompt = template;
+    }
+    // If promptId provided but not found, fall back to systemPrompt
+  }
 
   // Add system message
   messages.push({ role: 'system', content: resolvedSystemPrompt });
