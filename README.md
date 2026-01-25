@@ -4,9 +4,9 @@ Central hub for Affynix LLC infrastructure and services.
 
 ## Projects
 
-- **0xVoice** - AI voice synthesis and processing
-- **0xAPI** - Protocol automation and API layer
-- **Pornstar.ai** - Specialized media platform
+- **affynix_ai_website/** - Vite+React frontend, Express.js backend, and Next.js admin interface for affynix.ai
+- **affynix_com_website/affynix-platform/** - Next.js 14 multi-subdomain SaaS platform for affiliate marketing funnels with SEO optimization and analytics
+- **affynix-harvester/** - Playwright-based scraper with Express intake API for autonomous affiliate network data collection
 
 ## Getting Started
 
