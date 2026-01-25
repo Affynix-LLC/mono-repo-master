@@ -80,6 +80,14 @@ const formatTranscript = (messages) =>
     .map((msg) => `${msg.role?.toUpperCase() || 'UNKNOWN'}: ${msg.content}`)
     .join('\n\n');
 
+const updateLeadMetadata = (metadata, status, details = {}) => ({
+  ...metadata,
+  lead_capture: {
+    status,
+    ...details
+  }
+});
+
 export const captureLeadFromConversation = async ({ conversationId, dbHelpers }) => {
   if (!conversationId || !dbHelpers) {
     return null;
@@ -107,7 +115,19 @@ export const captureLeadFromConversation = async ({ conversationId, dbHelpers })
   const phone = sanitizeValue(contact.phone);
   const email = sanitizeValue(contact.email);
 
-  if (!email || !business || !website || !phone || !nameParts.firstName) {
+  const missingFields = [];
+  if (!nameParts.firstName) missingFields.push('firstName');
+  if (!email) missingFields.push('email');
+  if (!business) missingFields.push('business');
+  if (!website) missingFields.push('website');
+  if (!phone) missingFields.push('phone');
+
+  if (missingFields.length > 0) {
+    const updatedMetadata = updateLeadMetadata(metadata, 'missing_required_fields', {
+      missing_fields: missingFields,
+      checked_at: new Date().toISOString()
+    });
+    dbHelpers.update('conversations', conversationId, { metadata: updatedMetadata });
     return null;
   }
 
@@ -131,22 +151,24 @@ export const captureLeadFromConversation = async ({ conversationId, dbHelpers })
     submittedAt: now
   };
 
-  const recordId = await saveLeadToAirtable(leadPayload);
-
-  const updatedMetadata = {
-    ...metadata,
-    lead_capture: {
-      status: 'saved',
+  try {
+    const recordId = await saveLeadToAirtable(leadPayload);
+    const updatedMetadata = updateLeadMetadata(metadata, 'saved', {
       email: leadPayload.email,
       airtable_record_id: recordId,
       captured_at: now
-    }
-  };
-
-  dbHelpers.update('conversations', conversationId, { metadata: updatedMetadata });
-
-  return {
-    airtable_record_id: recordId,
-    captured_at: now
-  };
+    });
+    dbHelpers.update('conversations', conversationId, { metadata: updatedMetadata });
+    return {
+      airtable_record_id: recordId,
+      captured_at: now
+    };
+  } catch (error) {
+    const updatedMetadata = updateLeadMetadata(metadata, 'error', {
+      error_message: error?.message || 'Failed to save lead',
+      failed_at: now
+    });
+    dbHelpers.update('conversations', conversationId, { metadata: updatedMetadata });
+    throw error;
+  }
 };
