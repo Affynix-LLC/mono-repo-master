@@ -1,5 +1,12 @@
 import { saveLeadToAirtable } from './airtable.js';
 
+// Lead capture status constants
+const LEAD_STATUS = {
+  SAVED: 'saved',
+  FAILED: 'failed',
+  MISSING_FIELDS: 'missing_required_fields'
+};
+
 const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 const PHONE_REGEX = /(\+?\d[\d\s().-]{7,}[\d)])/;
 const WEBSITE_REGEX = /\b(?:https?:\/\/)?(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,}(?:\/[^\s]*)?/i;
@@ -100,7 +107,7 @@ export const captureLeadFromConversation = async ({ conversationId, dbHelpers })
 
   const metadata = conversation.metadata || {};
   // Don't retry if lead was already saved or if a save attempt failed
-  if (metadata.lead_capture?.status === 'saved' || metadata.lead_capture?.status === 'failed') {
+  if (metadata.lead_capture?.status === LEAD_STATUS.SAVED || metadata.lead_capture?.status === LEAD_STATUS.FAILED) {
     return metadata.lead_capture;
   }
 
@@ -127,7 +134,7 @@ export const captureLeadFromConversation = async ({ conversationId, dbHelpers })
     console.warn(
       `[Lead Capture] Lead capture skipped for conversation ${conversationId}: missing fields: ${missingFields.join(', ')}`
     );
-    const updatedMetadata = updateLeadMetadata(metadata, 'missing_required_fields', {
+    const updatedMetadata = updateLeadMetadata(metadata, LEAD_STATUS.MISSING_FIELDS, {
       missing_fields: missingFields,
       checked_at: new Date().toISOString()
     });
@@ -159,7 +166,7 @@ export const captureLeadFromConversation = async ({ conversationId, dbHelpers })
 
   try {
     const recordId = await saveLeadToAirtable(leadPayload);
-    const updatedMetadata = updateLeadMetadata(metadata, 'saved', {
+    const updatedMetadata = updateLeadMetadata(metadata, LEAD_STATUS.SAVED, {
       email: leadPayload.email,
       airtable_record_id: recordId,
       captured_at: now
@@ -178,7 +185,7 @@ export const captureLeadFromConversation = async ({ conversationId, dbHelpers })
       captured_at: now
     };
   } catch (error) {
-    const failedMetadata = updateLeadMetadata(metadata, 'failed', {
+    const failedMetadata = updateLeadMetadata(metadata, LEAD_STATUS.FAILED, {
       email: leadPayload.email,
       error: error instanceof Error ? error.message : String(error),
       last_attempt: now
