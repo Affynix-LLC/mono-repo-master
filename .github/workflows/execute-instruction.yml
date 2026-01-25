@@ -31,7 +31,11 @@ jobs:
 
       - name: Run apply_changes controller
         env:
-          MONO_REPO_TOKEN: ${{ secrets.MONO_REPO_TOKEN }}
+          MONO_REPO_TOKEN: ${{ secrets.MONO_REPO_TOKEN != '' && secrets.MONO_REPO_TOKEN || secrets.MONO_REPO__MASTER_TOKEN }}
           MONO_REPO_FULL_NAME: ${{ secrets.MONO_REPO_FULL_NAME }}
         run: |
+          if [ -z "${MONO_REPO_TOKEN:-}" ]; then
+            echo "ERROR: MONO_REPO_TOKEN is not set (checked MONO_REPO_TOKEN and MONO_REPO__MASTER_TOKEN secrets)." >&2
+            exit 1
+          fi
           python scripts/apply_changes.py
