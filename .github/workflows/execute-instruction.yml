@@ -1,0 +1,37 @@
+name: Execute Instruction
+
+on:
+  push:
+    paths:
+      - 'affynix-automation-controller-complete/commands/incoming/**'
+      - 'affynix-automation-controller-complete/atlas/toggle_state.json'
+  workflow_dispatch:
+
+jobs:
+  process-command:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: affynix-automation-controller-complete
+
+    steps:
+      - name: Checkout monorepo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pyyaml
+
+      - name: Run apply_changes controller
+        env:
+          MONO_REPO_TOKEN: ${{ secrets.MONO_REPO_TOKEN }}
+          MONO_REPO_FULL_NAME: ${{ secrets.MONO_REPO_FULL_NAME }}
+        run: |
+          python scripts/apply_changes.py

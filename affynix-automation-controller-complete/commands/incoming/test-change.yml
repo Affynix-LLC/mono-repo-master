@@ -10,4 +10,4 @@ changes:
     mode: append
     content: |
       
-      Test change from controller (append mode).
+      Test change from controller (append mode). Triggered via root workflow.
