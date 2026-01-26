@@ -12,6 +12,9 @@ on:
 env:
   NODE_VERSION: '18.x'
 
+permissions:
+  contents: read
+
 jobs:
   deploy-frontend:
     name: Deploy Frontend to Vercel
