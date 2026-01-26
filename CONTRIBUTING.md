@@ -1,13 +1,17 @@
 # Contributing to Affynix
 
-This document describes how to contribute changes to the Affynix monorepo in a way that matches our
-engineering rules and Copilot / AI agent instructions.
+## Setup
 
----
+1. Clone the repository
+2. Install dependencies
+3. Create a feature branch
 
-## 1. Getting started
+## Workflow
 
-1. **Clone the repository**
-   ```bash
-   git clone <REPO_URL>
-   cd <REPO_ROOT>
+- Create PRs for all changes
+- Ensure tests pass before merge
+- Follow existing code style
+
+## Questions?
+
+Reach out to the dev team.
