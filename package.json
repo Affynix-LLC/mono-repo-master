@@ -1,0 +1,25 @@
+{
+  "name": "affynix-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "pnpm --filter @affynix/web dev",
+    "dev:ai": "pnpm --filter @affynix/ai dev",
+    "dev:workers": "pnpm --filter @affynix/workers dev",
+    "build:web": "pnpm --filter @affynix/web build",
+    "build:ai": "pnpm --filter @affynix/ai build",
+    "build:workers": "pnpm --filter @affynix/workers build",
+    "build": "pnpm run build:web && pnpm run build:ai && pnpm run build:workers",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

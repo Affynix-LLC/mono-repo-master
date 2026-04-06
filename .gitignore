@@ -38,3 +38,6 @@ Thumbs.db
 sessions/
 
 .vercel
+.wrangler/
+.turbo/
+*.tsbuildinfo

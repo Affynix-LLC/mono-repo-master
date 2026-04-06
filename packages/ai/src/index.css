@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: 240 10% 4%;
+    --surface: 240 10% 7%;
+    --border: 240 6% 16%;
+    --text: 0 0% 95%;
+    --muted: 240 5% 50%;
+    --primary: 239 84% 67%;
+  }
+
+  * { @apply border-[hsl(var(--border))]; }
+  html { @apply antialiased; }
+  body { @apply bg-[hsl(var(--bg))] text-[hsl(var(--text))] font-sans min-h-screen; }
+}
