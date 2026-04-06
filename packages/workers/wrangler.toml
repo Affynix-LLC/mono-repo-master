@@ -11,6 +11,5 @@ AIRTABLE_BASE_ID = "apprtDMPpjmYejxA3"
 # AIRTABLE_API_KEY
 # ANTHROPIC_API_KEY
 
-[[routes]]
-pattern = "api.affynix.com/*"
-zone_name = "affynix.com"
+# Route added manually in Cloudflare dashboard:
+# api.affynix.com/* → affynix-api worker
